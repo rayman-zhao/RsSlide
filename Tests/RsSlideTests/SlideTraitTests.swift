@@ -31,11 +31,16 @@ struct TraitTests {
         case "notSupported":
             #expect(trait == .notSupported)
         case "isSlide":
-            var pvd: SlideProvider? = nil
-            if case .isSlide(let p) = trait {
-                pvd = p
+            var isSlide = false
+            if case .isSlide(_) = trait {
+                isSlide = true
             }
-            #expect(more || pvd != nil)
+        #if MORE_PROVIDERS_AVAILABLE
+            #expect(isSlide)
+        #else
+            #expect(more || isSlide)
+        #endif
+            
         case "isGenericFile":
             #expect(trait == .isGenericFile)
         case "isMetadataFolder":
@@ -79,6 +84,6 @@ struct TraitTests {
         for (i, s) in slides.enumerated() {
             print("#\(i + 1) \(s)")
         }
-        #expect(slides.count > 0) // 应该在 UI 中显示出来的文件和文件夹。
+        #expect(slides.count == 16) // 应该在 UI 中显示出来的文件和文件夹。
     }
 }
