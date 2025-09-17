@@ -9,7 +9,7 @@ struct SlidePreviewTests {
        await TIFFSetWarningHanlder { _, _ in }
    }
 
-    @Test(arguments: [
+    @Test(.serialized, arguments: [
         ("SVS/125870-2022;1C_20220926112546.svs", false),
         ("SVS/2312399.svs", false),
         ("KFB/1021754 (2).tif", false),
@@ -24,6 +24,7 @@ struct SlidePreviewTests {
             return
         }
 
+        print("Previewing \(fn)")
         let sp = evalMakeSlidePreview(fromTrait: trait)
         evalSlidePreviewMacroImage(sp)
     }
