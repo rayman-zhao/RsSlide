@@ -40,7 +40,6 @@ struct TraitTests {
         #else
             #expect(more || isSlide)
         #endif
-            
         case "isGenericFile":
             #expect(trait == .isGenericFile)
         case "isMetadataFolder":
