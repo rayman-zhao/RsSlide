@@ -35,7 +35,10 @@ let package = Package(
         .testTarget(
             name: "RsSlideTests",
             dependencies: ["RsSlide"],
-            swiftSettings: [.interoperabilityMode(.Cxx)],
+            swiftSettings: [
+                .interoperabilityMode(.Cxx),
+                //.define("MORE_PROVIDERS_AVAILABLE"),
+            ],
         ),
     ]
 )
