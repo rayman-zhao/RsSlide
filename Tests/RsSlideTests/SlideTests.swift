@@ -12,15 +12,16 @@ struct SlideTests {
     }
 
     @Test(.serialized, arguments: [
-        ("SVS/125870-2022;1C_20220926112546.svs", "AD5B7A96-B473-5E28-9980-EDD22A302085", true, false),
-        ("SVS/2312399.svs", "9C824291-71D8-5EF3-A501-645372FD1B78", false, false),
-        ("KFB/1021754 (2).tif", "EFE10AE6-75FE-5AAF-A582-1ADD86544742", true, false),
-        ("MDS/6横纹肌肉瘤/", "D1C530A6-EE7F-47BD-B2E6-766EC973742D", true, true),
-        ("MDS/7多形性脂肪肉瘤/1.mds", "A7D41B1D-0B0F-49AB-83DE-DA25ADE91231", true, true),
-        ("MDS/19.1_20160414_1904236501_2/1.mds", "6adb43b1-49bb-4992-8a30-5eef1352dc9e", true, true),
-        ("MDS/114504/", "509f235d-099a-40aa-a56f-eb96d82ae372", true, true),
+        ("SVS/125870-2022;1C_20220926112546.svs", "AD5B7A96-B473-5E28-9980-EDD22A302085", true, true, false),
+        ("SVS/2312399.svs", "9C824291-71D8-5EF3-A501-645372FD1B78", false, true, false),
+        ("KFB/1021754 (2).tif", "EFE10AE6-75FE-5AAF-A582-1ADD86544742", true, true, false),
+        ("MDS/6横纹肌肉瘤/", "D1C530A6-EE7F-47BD-B2E6-766EC973742D", false, false, true),
+        ("MDS/7多形性脂肪肉瘤/1.mds", "A7D41B1D-0B0F-49AB-83DE-DA25ADE91231", false, false, true),
+        ("MDS/19.1_20160414_1904236501_2/1.mds", "6adb43b1-49bb-4992-8a30-5eef1352dc9e", true, true, true),
+        ("MDS/114504/", "509f235d-099a-40aa-a56f-eb96d82ae372", false, false, true),
+        ("MDS/0002/", "A159D05B-ADE7-4FBA-B344-DA6E1BE33102", false, true, true),
     ])
-    func slideValid(_ fn: String, _ sid: String, _ label: Bool, _ more: Bool) async throws {
+    func slideValid(_ fn: String, _ sid: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
         if more && (trait == .isGenericFile || trait == .isGenericFolder) {
             return
@@ -36,8 +37,11 @@ struct SlideTests {
             } else {
                 #expect(s.fetchLabelJPEGImage().isEmpty)
             }
-            
-            try evalSlideMacroImage(s)
+            if macro {
+                try evalSlideMacroImage(s)
+            } else {
+                #expect(s.fetchMacroJPEGImage().isEmpty)
+            }
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
     }
