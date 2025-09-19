@@ -22,10 +22,19 @@ final class SVS : Slide {
     var layerDir: [UInt32] = []
     var macroDir: UInt32 = 0
     var labelDir: UInt32 = 0
-    // TODO: Centralize feature data construction
-    var featureData: Data = Data()
+    var imageDesc = ""
     
-    var id: UUID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+    var id: UUID {
+        get {
+            let fingerprint = """
+            dataSize: \(dataSize)
+            imageDesc: \(imageDesc)
+            layers: \(layerImageSize)
+            """
+
+            return Data(fingerprint.utf8).hashUUID
+        }
+    }
     var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
@@ -40,11 +49,9 @@ final class SVS : Slide {
         guard tiff != nil else { return nil }
         
         dataSize = path.fileSize
-        featureData.append(dataSize)
         
         importDirectories()
         
-        id = featureData.hashUUID
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
             //layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
@@ -81,13 +88,13 @@ final class SVS : Slide {
     }
     
     private func importDirectories() {
-        #if os(macOS)
+    #if os(macOS)
         let bufSize = 128 * 1024
         var buf = [UInt8](repeating: 0, count: bufSize)
         // TODO: var span = buf.mutableSpan
         let fp = fmemopen(&buf, bufSize, "w")
         defer { fclose(fp) }
-        #endif
+    #endif
 
         while (TIFFReadDirectory(tiff) == 1) {
             let dir = TIFFCurrentDirectory(tiff)
@@ -112,16 +119,16 @@ final class SVS : Slide {
                 macroDir = dir
             }
             
-            #if os(macOS)
+        #if os(macOS)
             fputs("Directory \(dir)\n", fp)
             TIFFPrintDirectory(tiff, fp, 0)
-            #endif
+        #endif
         }
         
-        #if os(macOS)
+    #if os(macOS)
         fflush(fp)
         log.info("\n\(String(decoding: buf, as: UTF8.self))")
-        #endif
+    #endif
     }
     
     private func importMetadata(from dir: UInt32) {
@@ -131,7 +138,7 @@ final class SVS : Slide {
         }
         
         if let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION) { // libtiff keep this const char * memory
-            featureData.append(String(cString: desc))
+            imageDesc = String(cString: desc)
             
             let scn = Scanner(string: String(cString: desc))
             

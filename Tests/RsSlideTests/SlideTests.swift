@@ -12,9 +12,9 @@ struct SlideTests {
     }
 
     @Test(.serialized, arguments: [
-        ("SVS/125870-2022;1C_20220926112546.svs", "AD5B7A96-B473-5E28-9980-EDD22A302085", true, true, false),
-        ("SVS/2312399.svs", "9C824291-71D8-5EF3-A501-645372FD1B78", false, true, false),
-        ("KFB/1021754 (2).tif", "EFE10AE6-75FE-5AAF-A582-1ADD86544742", true, true, false),
+        ("SVS/125870-2022;1C_20220926112546.svs", "33D0CE0D-3A5F-55B6-BF87-F47841EE52A5", true, true, false),
+        ("SVS/2312399.svs", "9F23270E-E03B-5F9D-9D85-136835176D09", false, true, false),
+        ("KFB/1021754 (2).tif", "EFD73D09-4D58-517D-8E50-D59FDA53F7A0", true, true, false),
         ("MDS/6横纹肌肉瘤/", "D1C530A6-EE7F-47BD-B2E6-766EC973742D", false, false, true),
         ("MDS/7多形性脂肪肉瘤/1.mds", "A7D41B1D-0B0F-49AB-83DE-DA25ADE91231", false, false, true),
         ("MDS/19.1_20160414_1904236501_2/1.mds", "6adb43b1-49bb-4992-8a30-5eef1352dc9e", true, true, true),
@@ -29,7 +29,7 @@ struct SlideTests {
 
         print("Validating \(fn)")
         let s = try #require(evalMakeSlide(fromTrait: trait))
-        //#expect(s.id == UUID(uuidString: sid))
+        #expect(s.id == UUID(uuidString: sid))
         await evalSlideMetadata(s)
         #expect(throws: Never.self) {
             if label {
