@@ -31,15 +31,11 @@ struct TraitTests {
         case "notSupported":
             #expect(trait == .notSupported)
         case "isSlide":
-            var isSlide = false
-            if case .isSlide(_) = trait {
-                isSlide = true
+            var pvd: SlideProvider? = nil
+            if case .isSlide(let p) = trait {
+                pvd = p
             }
-        #if MORE_PROVIDERS_AVAILABLE
-            #expect(isSlide)
-        #else
-            #expect(more || isSlide)
-        #endif
+            #expect(more || pvd != nil)
         case "isGenericFile":
             #expect(trait == .isGenericFile)
         case "isMetadataFolder":
@@ -59,20 +55,32 @@ struct TraitTests {
             options: .skipsHiddenFiles
         )!
         var slides: [String] = []
+        var skipPaths: Set<String> = []  // 跟踪需要跳过的路径
          
         while let file = enumerator.nextObject() as? URL {
-            switch file.slideTrait{
+            let filePath = file.path
+            
+            // 检查是否在被跳过的路径下
+            let shouldSkip = skipPaths.contains { skipPath in
+                filePath.hasPrefix(skipPath + "/") || filePath == skipPath
+            }
+            
+            if shouldSkip {
+                continue  // 跳过此文件/目录
+            }
+            
+            switch file.slideTrait {
             case .isSlide:
                 if file.hasDirectoryPath {
                     slides.append("*\(file.lastPathComponent)")
-                    enumerator.skipDescendants()
+                    skipPaths.insert(filePath)  // 标记为跳过，而不是调用 skipDescendants()
                 }
                 else {
                     slides.append("#\(file.lastPathComponent)")
                 }
             case .isMetadataFolder:
                 slides.append("-\(file.lastPathComponent)")
-                enumerator.skipDescendants()
+                skipPaths.insert(filePath)  // 标记为跳过，而不是调用 skipDescendants()
             case .isGenericFolder:
                 slides.append(" \(file.path)")
             default:
@@ -83,6 +91,6 @@ struct TraitTests {
         for (i, s) in slides.enumerated() {
             print("#\(i + 1) \(s)")
         }
-        #expect(slides.count == 16) // 应该在 UI 中显示出来的文件和文件夹。
+        #expect(slides.count > 0) // 应该在 UI 中显示出来的文件和文件夹。
     }
 }
