@@ -54,14 +54,11 @@ struct TraitTests {
     
     @Test
     func listFolder() async throws {
-        // 使用 enumerator2 方法修复 Windows 平台的 skipDescendants bug
-        guard let enumerator = FileManager.default.enumerator2(
+        let enumerator = FileManager.default.enumerator2(
             at: BASE,
             includingPropertiesForKeys: [.nameKey, .isDirectoryKey],
             options: .skipsHiddenFiles
-        ) else {
-            throw TestError("Failed to create enumerator")
-        }
+        )!
         var slides: [String] = []
          
         while let file = enumerator.nextObject() as? URL {
@@ -88,12 +85,5 @@ struct TraitTests {
             print("#\(i + 1) \(s)")
         }
         #expect(slides.count == 16) // 应该在 UI 中显示出来的文件和文件夹。
-    }
-}
-
-struct TestError: Error {
-    let message: String
-    init(_ message: String) {
-        self.message = message
     }
 }
