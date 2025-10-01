@@ -27,7 +27,6 @@ let package = Package(
                 .product(name: "Winnie", package: "Winnie"),
             ],
             swiftSettings: [
-                .interoperabilityMode(.Cxx),
                 //.strictMemorySafety(true),
                 //.define("MORE_PROVIDERS_AVAILABLE"),
             ],
@@ -36,7 +35,6 @@ let package = Package(
             name: "RsSlideTests",
             dependencies: ["RsSlide"],
             swiftSettings: [
-                .interoperabilityMode(.Cxx),
                 //.define("MORE_PROVIDERS_AVAILABLE"),
             ],
         ),
