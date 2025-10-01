@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import RsSlide
+import RsHelper
 
 @Suite
 struct TraitTests {
@@ -53,7 +54,7 @@ struct TraitTests {
     
     @Test
     func listFolder() async throws {
-        let enumerator = FileManager.default.enumerator(
+        let enumerator = FileManager.default.enumerator2(
             at: BASE,
             includingPropertiesForKeys: [.nameKey, .isDirectoryKey],
             options: .skipsHiddenFiles
