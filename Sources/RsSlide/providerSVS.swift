@@ -7,7 +7,11 @@ struct SVSPreview : SlidePreview {
     let path: URL
     
     func fetchMacroJPEGImage() -> Data {
+    #if os(Windows)
+        let tiff = TIFFOpenW(path.path.utf16 + [0], "rh")
+    #else
         let tiff = TIFFOpen(path.path, "rh")
+    #endif
         guard tiff != nil else { return Data() }
         defer {
             TIFFClose(tiff)
@@ -45,7 +49,11 @@ final class SVS : Slide {
     var layerTileSize: [(r: Int, c: Int)] = []
     
     init?(path: URL) {
+    #if os(Windows)
+        tiff = TIFFOpenW(path.path.utf16 + [0], "rh")
+    #else
         tiff = TIFFOpen(path.path, "rh") // h - Read TIFF header only, do not load the first directory.
+    #endif
         guard tiff != nil else { return nil }
         
         dataSize = path.fileSize
