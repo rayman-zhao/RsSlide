@@ -7,11 +7,12 @@ import RsSlide
 struct SlideTests {
     init() async {
         await TIFFSetWarningHanlder { md, msg in
-           // print("TIFFWarning: \(md) - \(msg)")
+            // print("TIFFWarning: \(md) - \(msg)")
         }
     }
 
     @Test(.serialized, arguments: [
+        ("志盈/60637.svs", "8495DB07-A11A-55C5-B606-AAFAB29BF4D6", true, true, false),
         ("SVS/125870-2022;1C_20220926112546.svs", "33D0CE0D-3A5F-55B6-BF87-F47841EE52A5", true, true, false),
         ("SVS/2312399.svs", "9F23270E-E03B-5F9D-9D85-136835176D09", false, true, false),
         ("KFB/1021754 (2).tif", "EFD73D09-4D58-517D-8E50-D59FDA53F7A0", true, true, false),
@@ -142,8 +143,13 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
                     let td = s.fetchTileRawImage(at: coord)
                     if td.isImage {
                         cnt += 1
-                        totalSize += td.count
+                        totalSize += td.count                  
                     }
+                    // if li == s.layerTileSize.count - 1 {
+                    //     try? td.write(to: URL(filePath: "tile_\(li)_\(rw)_\(cl).jpg",
+                    //         directoryHint: .notDirectory,
+                    //         relativeTo: BASE))
+                    // }
                 }
             }
         }
