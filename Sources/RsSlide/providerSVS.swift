@@ -24,6 +24,7 @@ struct SVSPreview : SlidePreview {
 final class SVS : Slide {
     let tiff: OpaquePointer?
     var layerDir: [UInt32] = []
+    var tilePhotometric = 0
     var macroDir: UInt32 = 0
     var labelDir: UInt32 = 0
     var imageDesc = ""
@@ -89,10 +90,19 @@ final class SVS : Slide {
         let bufSize = tileTrait.maxBytes
         var buf = [UInt8](repeating: 0, count: bufSize)
         // TODO: var span = buf.mutableSpan
-        let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
-        guard tileSize > 0 else { return Data()}
-        
-        return Data(buf[..<tileSize])
+        if tilePhotometric == PHOTOMETRIC_RGB {
+            let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
+            if (tileSize > 0) {
+                return buf.withUnsafeBytes { bytes in
+                    return tjCompress(bytes, TJPF_RGB, tileTrait.size.w, tileTrait.size.h)
+                }
+            } else {
+                return Data()
+            }
+        } else {
+            let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
+            return Data(buf[..<tileSize])
+        }
     }
     
     private func importDirectories() {
@@ -143,6 +153,9 @@ final class SVS : Slide {
         if let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
            let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH) {
             tileTrait = TileTrait(width: Int(tw), height: Int(th))
+        }
+        if let photometric: UInt16 = TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC) {
+            tilePhotometric = Int(photometric)
         }
         
         if let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION) { // libtiff keep this const char * memory
