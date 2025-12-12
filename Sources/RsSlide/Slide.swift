@@ -83,9 +83,16 @@ public protocol Slide {
     var layerTileSize: [(r: Int, c: Int)] { get }
     var tierCount: Int { get }
     
+    @available(*, deprecated, message: "Use return Array version")
     func fetchLabelJPEGImage() -> Data
+    @available(*, deprecated, message: "Use return Array version")
     func fetchMacroJPEGImage() -> Data
+    @available(*, deprecated, message: "Use return Array version")
     func fetchTileRawImage(at coord: TileCoordinate) -> Data
+
+    func fetchLabelJPEGImage() -> [UInt8]
+    func fetchMacroJPEGImage() -> [UInt8]
+    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]
 }
 
 extension Slide {

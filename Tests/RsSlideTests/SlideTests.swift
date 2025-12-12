@@ -36,12 +36,12 @@ struct SlideTests {
             if label {
                 try evalSlideLabelImage(s)
             } else {
-                #expect(s.fetchLabelJPEGImage().isEmpty)
+                #expect((s.fetchLabelJPEGImage() as [UInt8]).isEmpty)
             }
             if macro {
                 try evalSlideMacroImage(s)
             } else {
-                #expect(s.fetchMacroJPEGImage().isEmpty)
+                #expect((s.fetchMacroJPEGImage() as [UInt8]).isEmpty)
             }
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
@@ -108,7 +108,7 @@ func evalSlideMetadata(_ s: Slide) async {
 
 func evalSlideLabelImage(_ s: Slide) throws {
     let st = Date()
-    let img = s.fetchLabelJPEGImage()
+    let img = s.fetchLabelJPEGImage() as Data
     let et = Date()
     print("Label image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
@@ -120,7 +120,7 @@ func evalSlideLabelImage(_ s: Slide) throws {
 
 func evalSlideMacroImage(_ s: Slide) throws {
     let st = Date()
-    let img = s.fetchMacroJPEGImage()
+    let img = s.fetchMacroJPEGImage() as Data
     let et = Date()
     print("Macro image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
@@ -140,7 +140,7 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    let td = s.fetchTileRawImage(at: coord)
+                    let td = s.fetchTileRawImage(at: coord) as Data
                     if td.isImage {
                         cnt += 1
                         totalSize += td.count                  
@@ -183,7 +183,7 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     var cnt = 0
     let st = Date()
     for coord in tiles {
-        let td = s.fetchTileRawImage(at: coord)
+        let td = s.fetchTileRawImage(at: coord) as Data
         if td.isImage{
             cnt += 1
             totalSize += td.count

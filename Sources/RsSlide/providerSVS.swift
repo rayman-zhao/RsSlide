@@ -7,12 +7,16 @@ struct SVSPreview : SlidePreview {
     let path: URL
     
     func fetchMacroJPEGImage() -> Data {
+        return Data(fetchMacroJPEGImage() as [UInt8])
+    }
+
+    func fetchMacroJPEGImage() -> [UInt8] {
     #if os(Windows)
         let tiff = TIFFOpenW(path.path.utf16 + [0], "rh")
     #else
         let tiff = TIFFOpen(path.path, "rh")
     #endif
-        guard tiff != nil else { return Data() }
+        guard tiff != nil else { return [] }
         defer {
             TIFFClose(tiff)
         }
@@ -73,18 +77,30 @@ final class SVS : Slide {
     }
     
     func fetchLabelJPEGImage() -> Data {
-        guard labelDir != 0 else { return Data() }
-        return TIFFReadJPEGImage(tiff, labelDir)
+        return Data(fetchLabelJPEGImage() as [UInt8])
     }
     
     func fetchMacroJPEGImage() -> Data {
-        guard macroDir != 0 else { return Data() }
-        return TIFFReadJPEGImage(tiff, macroDir)
+        return Data(fetchMacroJPEGImage() as [UInt8])
     }
     
     func fetchTileRawImage(at coord: TileCoordinate) -> Data {
+        return Data(fetchTileRawImage(at: coord) as [UInt8])
+    }
+    
+    func fetchLabelJPEGImage() -> [UInt8] {
+        guard labelDir != 0 else { return [] }
+        return TIFFReadJPEGImage(tiff, labelDir)
+    }
+    
+    func fetchMacroJPEGImage() -> [UInt8] {
+        guard macroDir != 0 else { return [] }
+        return TIFFReadJPEGImage(tiff, macroDir)
+    }
+
+    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8] {
         assert(validate(coord: coord))
-        guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return Data() }
+        guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return [] }
         
         let tid = TIFFComputeTile(tiff, UInt32(coord.col * tileTrait.size.w), UInt32(coord.row * tileTrait.size.h), 0, 0)
         let bufSize = tileTrait.maxBytes
@@ -97,14 +113,14 @@ final class SVS : Slide {
                     return tjCompress(bytes, TJPF_RGB, tileTrait.size.w, tileTrait.size.h)
                 }
             } else {
-                return Data()
+                return []
             }
         } else {
             let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
-            return Data(buf[..<tileSize])
+            return Array(buf[..<tileSize])
         }
     }
-    
+
     private func importDirectories() {
     #if os(macOS)
         let bufSize = 128 * 1024
