@@ -45,12 +45,15 @@ final class SVS : Slide {
         }
     }
     var mainPath: String
+    var createTime: Date
+    var modifyTime: Date
     var name: String
     var format: String
     var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
     let tierCount: Int = 1
+    let tierSpacing: Double = 0.0
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 0
     var layerImageSize: [(w: Int, h: Int)] = []
@@ -65,6 +68,9 @@ final class SVS : Slide {
         guard tiff != nil else { return nil }
         
         mainPath = path.path
+        let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
+        modifyTime = rv?.contentModificationDate ?? Date(timeIntervalSince1970: 0)
         name = path.deletingPathExtension().lastPathComponent
         format = path.pathExtension.uppercased()
         dataSize = path.fileSize

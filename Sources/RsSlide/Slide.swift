@@ -74,6 +74,8 @@ public struct TileTrait: CustomStringConvertible {
 public protocol Slide {
     var id: UUID { get }
     var mainPath: String { get }
+    var createTime: Date { get }
+    var modifyTime: Date { get }
     var name: String { get }
     var format: String { get }
     var dataSize: Int { get }
@@ -85,6 +87,7 @@ public protocol Slide {
     var layerImageSize: [(w: Int, h: Int)] { get }
     var layerTileSize: [(r: Int, c: Int)] { get }
     var tierCount: Int { get }
+    var tierSpacing: Double { get }
     
     @available(*, deprecated, message: "Use return Array version")
     func fetchLabelJPEGImage() -> Data
