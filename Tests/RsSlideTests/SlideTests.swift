@@ -12,17 +12,17 @@ struct SlideTests {
     }
 
     @Test(.serialized, arguments: [
-        ("志盈/60637.svs", "8495DB07-A11A-55C5-B606-AAFAB29BF4D6", true, true, false),
-        ("SVS/125870-2022;1C_20220926112546.svs", "33D0CE0D-3A5F-55B6-BF87-F47841EE52A5", true, true, false),
-        ("SVS/2312399.svs", "9F23270E-E03B-5F9D-9D85-136835176D09", false, true, false),
-        ("KFB/1021754 (2).tif", "EFD73D09-4D58-517D-8E50-D59FDA53F7A0", true, true, false),
-        ("MDS/6横纹肌肉瘤/", "D1C530A6-EE7F-47BD-B2E6-766EC973742D", false, false, true),
-        ("MDS/7多形性脂肪肉瘤/1.mds", "A7D41B1D-0B0F-49AB-83DE-DA25ADE91231", false, false, true),
-        ("MDS/19.1_20160414_1904236501_2/1.mds", "6adb43b1-49bb-4992-8a30-5eef1352dc9e", true, true, true),
-        ("MDS/114504/", "509f235d-099a-40aa-a56f-eb96d82ae372", false, false, true),
-        ("MDS/0002/", "A159D05B-ADE7-4FBA-B344-DA6E1BE33102", false, true, true),
+        ("志盈/60637.svs", "8495DB07-A11A-55C5-B606-AAFAB29BF4D6", "60637", "SVS", true, true, false),
+        ("SVS/125870-2022;1C_20220926112546.svs", "33D0CE0D-3A5F-55B6-BF87-F47841EE52A5", "125870-2022;1C_20220926112546", "SVS", true, true, false),
+        ("SVS/2312399.svs", "9F23270E-E03B-5F9D-9D85-136835176D09", "2312399", "SVS", false, true, false),
+        ("KFB/1021754 (2).tif", "EFD73D09-4D58-517D-8E50-D59FDA53F7A0", "1021754 (2)", "TIF", true, true, false),
+        ("MDS/6横纹肌肉瘤/", "D1C530A6-EE7F-47BD-B2E6-766EC973742D", "6横纹肌肉瘤", "MDS", false, false, true),
+        ("MDS/7多形性脂肪肉瘤/1.mds", "A7D41B1D-0B0F-49AB-83DE-DA25ADE91231", "7多形性脂肪肉瘤", "MDS", false, false, true),
+        ("MDS/19.1_20160414_1904236501_2/1.mds", "6adb43b1-49bb-4992-8a30-5eef1352dc9e", "19.1_20160414_1904236501_2", "MDS", true, true, true),
+        ("MDS/114504/", "509f235d-099a-40aa-a56f-eb96d82ae372", "114504", "MDS", false, false, true),
+        ("MDS/0002/", "A159D05B-ADE7-4FBA-B344-DA6E1BE33102", "0002", "MDS", false, true, true),
     ])
-    func slideValid(_ fn: String, _ sid: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
+    func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
         if more && (trait == .isGenericFile || trait == .isGenericFolder) {
             return
@@ -31,6 +31,8 @@ struct SlideTests {
         print("Validating \(fn)")
         let s = try #require(evalMakeSlide(fromTrait: trait))
         #expect(s.id == UUID(uuidString: sid))
+        #expect(s.name == name)
+        #expect(s.format == fmt)
         await evalSlideMetadata(s)
         #expect(throws: Never.self) {
             if label {

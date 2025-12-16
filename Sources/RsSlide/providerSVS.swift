@@ -44,6 +44,9 @@ final class SVS : Slide {
             return Data(fingerprint.utf8).hashUUID
         }
     }
+    var mainPath: String
+    var name: String
+    var format: String
     var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
@@ -61,6 +64,9 @@ final class SVS : Slide {
     #endif
         guard tiff != nil else { return nil }
         
+        mainPath = path.path
+        name = path.deletingPathExtension().lastPathComponent
+        format = path.pathExtension.uppercased()
         dataSize = path.fileSize
         
         importDirectories()

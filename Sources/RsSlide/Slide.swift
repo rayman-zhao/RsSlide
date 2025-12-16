@@ -73,6 +73,9 @@ public struct TileTrait: CustomStringConvertible {
 
 public protocol Slide {
     var id: UUID { get }
+    var mainPath: String { get }
+    var name: String { get }
+    var format: String { get }
     var dataSize: Int { get }
     var scanObjective: Int { get }
     var scanScale: Double { get }
