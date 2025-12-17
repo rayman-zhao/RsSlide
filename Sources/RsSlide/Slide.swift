@@ -83,6 +83,7 @@ public protocol Slide {
     var scanScale: Double { get }
     var tileTrait: TileTrait { get }
     var layerZoom: Int { get }
+    var extendXMLString: String { get }
 
     var layerImageSize: [(w: Int, h: Int)] { get }
     var layerTileSize: [(r: Int, c: Int)] { get }

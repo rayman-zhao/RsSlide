@@ -56,6 +56,7 @@ final class SVS : Slide {
     let tierSpacing: Double = 0.0
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 0
+    let extendXMLString: String = ""
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
     
