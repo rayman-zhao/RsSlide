@@ -5,10 +5,6 @@ import RsHelper
 
 struct SVSPreview : SlidePreview {
     let path: URL
-    
-    func fetchMacroJPEGImage() -> Data {
-        return Data(fetchMacroJPEGImage() as [UInt8])
-    }
 
     func fetchMacroJPEGImage() -> [UInt8] {
     #if os(Windows)
@@ -89,18 +85,6 @@ final class SVS : Slide {
         TIFFClose(tiff)
     }
     
-    func fetchLabelJPEGImage() -> Data {
-        return Data(fetchLabelJPEGImage() as [UInt8])
-    }
-    
-    func fetchMacroJPEGImage() -> Data {
-        return Data(fetchMacroJPEGImage() as [UInt8])
-    }
-    
-    func fetchTileRawImage(at coord: TileCoordinate) -> Data {
-        return Data(fetchTileRawImage(at: coord) as [UInt8])
-    }
-    
     func fetchLabelJPEGImage() -> [UInt8] {
         guard labelDir != 0 else { return [] }
         return TIFFReadJPEGImage(tiff, labelDir)
@@ -122,9 +106,7 @@ final class SVS : Slide {
         if tilePhotometric == PHOTOMETRIC_RGB {
             let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
             if (tileSize > 0) {
-                return buf.withUnsafeBytes { bytes in
-                    return tjCompress(bytes, TJPF_RGB, tileTrait.size.w, tileTrait.size.h)
-                }
+                return tjCompress(buf, TJPF_RGB, tileTrait.size.w, tileTrait.size.h)
             } else {
                 return []
             }
