@@ -106,13 +106,13 @@ final class SVS : Slide {
         if tilePhotometric == PHOTOMETRIC_RGB {
             let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
             if (tileSize > 0) {
-                return tjCompress(buf, TJPF_RGB, tileTrait.size.w, tileTrait.size.h)
+                return trimTile(for: tjCompress(buf, TJPF_RGB, tileTrait.size.w, tileTrait.size.h), at: coord)
             } else {
                 return []
             }
         } else {
             let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
-            return Array(buf[..<tileSize])
+            return trimTile(for: Array(buf[..<tileSize]), at: coord)
         }
     }
 

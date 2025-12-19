@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import LibJPEGTurbo
 import LibTIFF
 import RsSlide
 
@@ -38,13 +39,14 @@ struct SlideTests {
             if label {
                 try evalSlideLabelImage(s)
             } else {
-                #expect((s.fetchLabelJPEGImage() as [UInt8]).isEmpty)
+                #expect(s.fetchLabelJPEGImage().isEmpty)
             }
             if macro {
                 try evalSlideMacroImage(s)
             } else {
-                #expect((s.fetchMacroJPEGImage() as [UInt8]).isEmpty)
+                #expect(s.fetchMacroJPEGImage().isEmpty)
             }
+            try evalSlideThumbnailImage(s)
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
     }
@@ -110,24 +112,39 @@ func evalSlideMetadata(_ s: Slide) async {
 
 func evalSlideLabelImage(_ s: Slide) throws {
     let st = Date()
-    let img = s.fetchLabelJPEGImage() as Data
+    let img = Data(s.fetchLabelJPEGImage())
     let et = Date()
     print("Label image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
     
-    try img.write(to: URL(filePath: "label.jpg",
+    try img.write(to: URL(filePath: "\(s.name)_label.jpg",
                           directoryHint: .notDirectory,
                           relativeTo: BASE))
 }
 
 func evalSlideMacroImage(_ s: Slide) throws {
     let st = Date()
-    let img = s.fetchMacroJPEGImage() as Data
+    let img = Data(s.fetchMacroJPEGImage())
     let et = Date()
     print("Macro image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
     
-    try img.write(to: URL(filePath: "macro.jpg",
+    try img.write(to: URL(filePath: "\(s.name)_macro.jpg",
+                          directoryHint: .notDirectory,
+                          relativeTo: BASE))
+}
+
+func evalSlideThumbnailImage(_ s: Slide) throws {
+    let st = Date()
+    let jpg = s.fetchThumbnailJPEGImage(in: 512)
+    let (w, h) = tjDecompressHeader(jpg)
+    #expect(w <= 512 && h <= 512)
+    let img = Data(jpg)
+    let et = Date()
+    print("Thumbnail image consumed \(et.timeIntervalSince(st) * 1000) ms")
+    #expect(img.isJPEG)
+    
+    try img.write(to: URL(filePath: "\(s.name)_thumbnail.jpg",
                           directoryHint: .notDirectory,
                           relativeTo: BASE))
 }
@@ -142,7 +159,7 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    let td = s.fetchTileRawImage(at: coord) as Data
+                    let td = Data(s.fetchTileRawImage(at: coord))
                     if td.isImage {
                         cnt += 1
                         totalSize += td.count                  
@@ -182,10 +199,10 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     
     tiles = tiles.shuffled()
     var totalSize = 0
-    var cnt = 0
+    var cnt = 0 
     let st = Date()
     for coord in tiles {
-        let td = s.fetchTileRawImage(at: coord) as Data
+        let td = Data(s.fetchTileRawImage(at: coord))
         if td.isImage{
             cnt += 1
             totalSize += td.count
@@ -203,5 +220,3 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     
     return (tiles.count, cnt)
 }
-
-
