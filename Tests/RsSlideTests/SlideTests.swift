@@ -136,7 +136,7 @@ func evalSlideMacroImage(_ s: Slide) throws {
 
 func evalSlideThumbnailImage(_ s: Slide) throws {
     let st = Date()
-    let jpg = s.fetchThumbnailJPEGImage(in: 512)
+    let jpg = s.fetchThumbnailJPEGImage(with: 512)
     let (w, h) = tjDecompressHeader(jpg)
     #expect(w <= 512 && h <= 512)
     let img = Data(jpg)

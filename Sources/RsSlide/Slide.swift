@@ -1,5 +1,6 @@
 import Foundation
 import LibJPEGTurbo
+import MBL
 import RsHelper
 
 public struct TileCoordinate {
@@ -135,7 +136,7 @@ extension Slide {
 }
 
 public extension Slide {
-    func fetchThumbnailJPEGImage(in size: Int = 512) -> [UInt8] {
+    func fetchThumbnailJPEGImage(with maxSize: Int = 512) -> [UInt8] {
         guard tileTrait.pixelFormat == .rgb
             && tileTrait.sampleBits == 8
             && tileTrait.compression == .jpeg else {
@@ -144,33 +145,45 @@ public extension Slide {
         }
 
         var layer = layerImageSize.count - 1
-        while (layer > 0 && layerImageSize[layer].w < size && layerImageSize[layer].h < size) {
+        while (layer > 0 && layerImageSize[layer].w < maxSize && layerImageSize[layer].h < maxSize) {
             layer -= 1
         }
         guard layer >= 0 else { return [] }
 
-        let rows = layerTileSize[layer].r
-        let cols = layerTileSize[layer].c
-        let pitch = cols * tileTrait.size.w * 3
-        let height = rows * tileTrait.size.h
-        var rgb = [UInt8](repeating: 255, count: pitch * height)
+        let layerWidth = layerImageSize[layer].w
+        let layerHeight = layerImageSize[layer].h
+        let layerPitch = layerWidth * 3
+        var layerRGBImage = [UInt8](repeating: 0, count: layerPitch * layerHeight)
 
         let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
         defer { tj3Destroy(tj) }
 
-        rgb.withUnsafeMutableBytes { buf in
+        layerRGBImage.withUnsafeMutableBytes { buf in
             for row in 0..<layerTileSize[layer].r {
                 for col in 0..<layerTileSize[layer].c {
                     let coord = TileCoordinate(layer: layer, row: row, col: col)
                     let img = fetchTileRawImage(at: coord)
                     _ = img.withUnsafeBytes { tile_buf in 
                         tj3Decompress8(tj, tile_buf.baseAddress, tile_buf.count,
-                            buf.baseAddress! + row * tileTrait.size.h * pitch + col * tileTrait.size.w * 3, Int32(pitch), TJPF_RGB.rawValue)
+                            buf.baseAddress! + row * tileTrait.size.h * layerPitch + col * tileTrait.size.w * 3, Int32(layerPitch), TJPF_RGB.rawValue)
                     }
                 }
             }
         }
 
-        return tjCompress(rgb, TJPF_RGB, layerImageSize[layer].w, layerImageSize[layer].h, pitch)
+        var thumbnailWidth = maxSize
+        var thumbnailHeight = maxSize
+        if layerWidth > layerHeight {
+            thumbnailHeight = thumbnailWidth * layerHeight / layerWidth
+        } else if layerWidth < layerHeight {
+            thumbnailWidth = thumbnailHeight * layerWidth / layerHeight
+        }
+
+        if (thumbnailWidth, thumbnailHeight) == (layerWidth, layerHeight) {
+            return tjCompress(layerRGBImage, TJPF_RGB, layerWidth, layerHeight)
+        } else {
+            let thumbnail = scaleImage(layerRGBImage, layerWidth, layerHeight, thumbnailWidth, thumbnailHeight)
+            return tjCompress(thumbnail, TJPF_RGB, thumbnailWidth, thumbnailHeight)
+        }
     }
 }
