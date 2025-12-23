@@ -96,7 +96,7 @@ final class SVS : Slide {
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8] {
-        assert(validate(coord: coord))
+        guard validate(coord: coord) else { return [] }
         guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return [] }
         
         let tid = TIFFComputeTile(tiff, UInt32(coord.col * tileTrait.size.w), UInt32(coord.row * tileTrait.size.h), 0, 0)
