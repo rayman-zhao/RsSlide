@@ -49,6 +49,7 @@ struct SlideTests {
             try evalSlideThumbnailImage(s)
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
+        evalNonExistingTiles(s)
     }
 }
 
@@ -219,4 +220,29 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     print("Random read speed \(Double(totalSize) / 1024 / 1024 / totalTime) MB/s")
     
     return (tiles.count, cnt)
+}
+
+func evalNonExistingTiles(_ s: Slide) {
+    var width = s.layerImageSize.last?.w ?? 0
+    var height = s.layerImageSize.last?.h ?? 0
+    var layer = s.layerImageSize.count - 1
+    var cnt = 0
+
+    while width > 0 || height > 0 {
+        layer += 1
+        width /= s.layerZoom
+        height /= s.layerZoom
+
+        for rw in 0..<(height / s.tileTrait.size.h + 1) {
+            for cl in 0..<(width / s.tileTrait.size.w + 1) {
+                let coord = TileCoordinate(layer: layer, row: rw, col: cl)
+                let td = s.fetchTileRawImage(at: coord)
+                #expect(td.count == 0)
+
+                cnt += 1
+            }
+        }
+    }
+
+    #expect(cnt > 0)
 }
