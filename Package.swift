@@ -23,7 +23,6 @@ let package = Package(
             dependencies: [
                 .product(name: "RsHelper", package: "RsHelper"),
                 .product(name: "RsPack", package: "RsPack"),
-                .product(name: "Winnie", package: "Winnie"),
             ],
             swiftSettings: [
                 //.strictMemorySafety(true),
