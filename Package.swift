@@ -16,7 +16,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/rayman-zhao/RsHelper.git", branch: "main"),
         .package(url: "https://github.com/rayman-zhao/RsPack.git", branch: "main"),
-        .package(url: "https://github.com/patricktcoakley/Winnie.git", from: "1.0.0"),
     ],
     targets: [
         .target(

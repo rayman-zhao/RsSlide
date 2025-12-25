@@ -84,6 +84,6 @@ struct TraitTests {
         for (i, s) in slides.enumerated() {
             print("#\(i + 1) \(s)")
         }
-        #expect(slides.count == 17) // 应该在 UI 中显示出来的文件和文件夹。
+        #expect(slides.count == 18) // 应该在 UI 中显示出来的文件和文件夹。
     }
 }
