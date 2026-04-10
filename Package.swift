@@ -26,14 +26,14 @@ let package = Package(
             ],
             swiftSettings: [
                 //.strictMemorySafety(true),
-                //.define("MORE_PROVIDERS_AVAILABLE"),
+                .define("MORE_PROVIDERS_AVAILABLE"),
             ],
         ),
         .testTarget(
             name: "RsSlideTests",
             dependencies: ["RsSlide"],
             swiftSettings: [
-                //.define("MORE_PROVIDERS_AVAILABLE"),
+                .define("MORE_PROVIDERS_AVAILABLE"),
             ],
         ),
     ]
