@@ -8,7 +8,7 @@ struct SVSPreview : SlidePreview {
 
     func fetchMacroJPEGImage() -> [UInt8] {
     #if os(Windows)
-        let tiff = TIFFOpenW(path.path.utf16 + [0], "rh")
+        let tiff = TIFFOpenW(path.path.wideString, "rh")
     #else
         let tiff = TIFFOpen(path.path, "rh")
     #endif
@@ -51,14 +51,14 @@ final class SVS : Slide {
     let tierCount: Int = 1
     let tierSpacing: Double = 0.0
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
-    var layerZoom = 0
+    var layerZoom = 2
     let extendXMLString: String = ""
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
     
     init?(path: URL) {
     #if os(Windows)
-        tiff = TIFFOpenW(path.path.utf16 + [0], "rh")
+        tiff = TIFFOpenW(path.path.wideString, "rh")
     #else
         tiff = TIFFOpen(path.path, "rh") // h - Read TIFF header only, do not load the first directory.
     #endif

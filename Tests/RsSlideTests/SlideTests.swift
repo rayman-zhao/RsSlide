@@ -13,6 +13,7 @@ struct SlideTests {
     }
 
     @Test(.serialized, arguments: [
+        ("3D Histech/1.tif", "193DD7EF-940E-513A-899E-45B42749E753", "1", "TIF", false, false, false),
         ("志盈/60637.svs", "8495DB07-A11A-55C5-B606-AAFAB29BF4D6", "60637", "SVS", true, true, false),
         ("SVS/125870-2022;1C_20220926112546.svs", "33D0CE0D-3A5F-55B6-BF87-F47841EE52A5", "125870-2022;1C_20220926112546", "SVS", true, true, false),
         ("SVS/2312399.svs", "9F23270E-E03B-5F9D-9D85-136835176D09", "2312399", "SVS", false, true, false),
