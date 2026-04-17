@@ -181,6 +181,7 @@ final class SVS : Slide {
                 scanObjective = v
             }
             
+            scn.currentIndex = scn.string.startIndex
             if scn.scanUpToString("MPP") != nil,
                scn.scanString("MPP") != nil,
                scn.scanString("=") != nil,

@@ -10,6 +10,7 @@ struct SlidePreviewTests {
    }
 
     @Test(.serialized, arguments: [
+        ("SVS/B20028048-1.svs", false),
         ("SVS/125870-2022;1C_20220926112546.svs", false),
         ("SVS/2312399.svs", false),
         ("KFB/1021754 (2).tif", false),
