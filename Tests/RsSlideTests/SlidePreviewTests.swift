@@ -18,6 +18,8 @@ struct SlidePreviewTests {
         ("MDS/19.1_20160414_1904236501_2/1.mds", true),
         ("MDS/114504/1.mds", true),
         ("MDS/0002/1.mds", true),
+        ("MDSX/slide.mdsx", true),
+        ("MDSX/mdsx_test_enc/1.mdsx", true),
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait

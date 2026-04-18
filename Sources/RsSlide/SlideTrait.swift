@@ -48,6 +48,8 @@ public extension URL {
 #if MORE_PROVIDERS_AVAILABLE
             case "mds":
                 return .isSlide(SlideProvider({ MDSPreview(path: self) }, { MDS(path: self) }))
+            case "mdsx":
+                return .isSlide(SlideProvider({ VMSDKPreview(path: self) }, { VMSDK(path: self) }))
 #endif
             default:
                 log.trace("Not slide \(self.path)")
@@ -62,6 +64,9 @@ public extension URL {
             if let url = reachableChild(named: "1.mds") {
                 log.trace("Found 1.mds in \(url.path)")
                 return .isSlide(SlideProvider({ MDSPreview(path: url) }, { MDS(path: url) }))
+            } else if let url = reachableChild(named: "1.mdsx") {
+                log.trace("Found 1.mdsx in \(url.path)")
+                return .isSlide(SlideProvider({ VMSDKPreview(path: url) }, { VMSDK(path: url) }))
             }
 #endif
             return .isGenericFolder
