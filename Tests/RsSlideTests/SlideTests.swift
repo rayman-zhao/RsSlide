@@ -1,4 +1,5 @@
 import Foundation
+import FoundationXML
 import Testing
 import LibJPEGTurbo
 import LibTIFF
@@ -115,6 +116,11 @@ func evalSlideMetadata(_ s: Slide) async {
     
     #expect([2, 4].contains(s.layerZoom))
     print("Layer zoom \(s.layerZoom)")
+
+    if !s.extendXMLString.isEmpty {
+        let xml = try? XMLDocument(xmlString: s.extendXMLString)
+        #expect(xml != nil)
+    }
 }
 
 func evalSlideLabelImage(_ s: Slide) throws {
