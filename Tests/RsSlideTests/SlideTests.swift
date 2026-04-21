@@ -120,6 +120,9 @@ func evalSlideMetadata(_ s: Slide) async {
     if !s.extendXMLString.isEmpty {
         let xml = try? XMLDocument(xmlString: s.extendXMLString)
         #expect(xml != nil)
+        xml?.forEachElement { parent, name, attribute, value in
+            print("\(parent)/\(name) - \(attribute) - \(value)")
+        }
     }
 }
 
