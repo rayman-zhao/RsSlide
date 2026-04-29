@@ -29,6 +29,7 @@ struct SlideTests {
         ("MDSX/4/", "7C759554-512B-452C-A7DD-B512883B6602", "4", "MDSX", false, false, true),
         ("MDSX/slide.mdsx", "81be8ba7-b0be-4f96-81be-014ece99e581", "slide", "MDSX", true, true, true),
         ("MDSX/mdsx_test_enc/1.mdsx", "7B517EA2-2601-4279-A2B9-30E1415E5935", "mdsx_test_enc", "MDSX", true, true, true),
+        ("迪英加/L1-4.svs", "0A508412-C06C-5A09-BED2-DAC5F736B9D7", "L1-4", "SVS", true, true, false),
     ])
     func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
