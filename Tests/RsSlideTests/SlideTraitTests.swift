@@ -11,7 +11,7 @@ struct TraitTests {
         ("SVS/2312399.dsmeta/", "isMetadataFolder", false, false),
         ("x/", "isGenericFolder", false, false),
         ("KFB/2312399.kfb", "isGenericFile", false, false),
-        ("MDSX/4/1.mdsx", "isGenericFile", false, false),
+        ("MDSX/4/1.mdsx", "isSlide", true, false),
         ("SVS/2312399.svs", "isSlide", false, false),
         ("MDS/0002", "isSlide", true, true),
         ("MDS/0002/", "isSlide", true, true),

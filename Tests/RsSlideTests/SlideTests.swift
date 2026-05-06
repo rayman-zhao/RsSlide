@@ -57,7 +57,9 @@ struct SlideTests {
             try evalSlideThumbnailImage(s)
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
-        evalNonExistingTiles(s)
+
+        #expect(s.layerImageSize.last?.w == 1 && s.layerImageSize.last?.h == 1)
+        #expect(s.layerTileSize.last?.r == 1 && s.layerTileSize.last?.c == 1)
     }
 }
 
