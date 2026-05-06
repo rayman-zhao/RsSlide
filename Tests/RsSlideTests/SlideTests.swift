@@ -58,8 +58,8 @@ struct SlideTests {
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
 
-        #expect(s.layerImageSize.last?.w == 1 && s.layerImageSize.last?.h == 1)
-        #expect(s.layerTileSize.last?.r == 1 && s.layerTileSize.last?.c == 1)
+        #expect(s.layerImageSize.last!.w == 1 && s.layerImageSize.last!.h == 1)
+        #expect(s.layerTileSize.last!.r == 1 && s.layerTileSize.last!.c == 1)
     }
 }
 
@@ -110,8 +110,10 @@ func evalSlideMetadata(_ s: Slide) async {
         print("Layer \(i) \(s.layerImageSize[i].w)-\(s.layerImageSize[i].h) in \(s.layerTileSize[i].r)-\(s.layerTileSize[i].c)")
         
         if i > 0 {
-            #expect(s.layerImageSize[i - 1].w / s.layerZoom == s.layerImageSize[i].w)
-            #expect(s.layerImageSize[i - 1].h / s.layerZoom == s.layerImageSize[i].h)
+            let w = Int(ceil(Double(s.layerImageSize[i - 1].w) / Double(s.layerZoom)))
+            let h = Int(ceil(Double(s.layerImageSize[i - 1].h) / Double(s.layerZoom)))
+            #expect(w == s.layerImageSize[i].w)
+            #expect(h == s.layerImageSize[i].h)
             #expect(s.layerTileSize[i - 1].r / s.layerZoom <= (s.layerTileSize[i].r + 1))
             #expect(s.layerTileSize[i - 1].c / s.layerZoom <= (s.layerTileSize[i].c + 1))
         }

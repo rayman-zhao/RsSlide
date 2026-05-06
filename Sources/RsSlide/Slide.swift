@@ -138,7 +138,7 @@ extension Slide {
             }
         }
 
-        return tjCompress(tile, TJPF_RGB, tileTrait.size.w - trimWidth, tileTrait.size.h - trimHeight, tileTrait.pitchBytes)
+        return tjCompress(tile, TJPF_RGB, tileWidth - trimWidth, tileHeight - trimHeight, tileTrait.pitchBytes)
     }
 }
 
