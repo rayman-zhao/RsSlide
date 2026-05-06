@@ -111,22 +111,29 @@ extension Slide {
     func trimTile(for rawImage: [UInt8], at coord: TileCoordinate) -> [UInt8] {
         guard tileTrait.pixelFormat == .rgb && tileTrait.sampleBits == 8 && tileTrait.compression == .jpeg else { return rawImage }
 
+        let tileWidth = tileTrait.size.w
+        let tileHeight = tileTrait.size.h
         var trimWidth = 0
         var trimHeight = 0
         if coord.row == layerTileSize[coord.layer].r - 1 {
-            trimHeight = (coord.row + 1) * tileTrait.size.h - layerImageSize[coord.layer].h
+            trimHeight = (coord.row + 1) * tileHeight - layerImageSize[coord.layer].h
         }
         if coord.col == layerTileSize[coord.layer].c - 1 {
-            trimWidth = (coord.col + 1) * tileTrait.size.w - layerImageSize[coord.layer].w
+            trimWidth = (coord.col + 1) * tileWidth - layerImageSize[coord.layer].w
         }
         guard trimWidth > 0 || trimHeight > 0 else { return rawImage }
 
+        let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
+        defer { tj3Destroy(tj) }
+
+        guard tj3DecompressHeader(tj, rawImage, rawImage.count) == 0 else { return rawImage }
+        let jpegWidth = tj3Get(tj, Int32(TJPARAM_JPEGWIDTH.rawValue))
+        let jpegHeight = tj3Get(tj, Int32(TJPARAM_JPEGHEIGHT.rawValue))
+        guard jpegWidth == tileWidth && jpegHeight == tileHeight else { return rawImage }
+
         var tile = [UInt8](repeating: 0, count: tileTrait.maxBytes)
         tile.withUnsafeMutableBytes { destBuf in
-            let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
-            defer { tj3Destroy(tj) }
-
-             _ = rawImage.withUnsafeBytes { srcBuf in 
+             _ = rawImage.withUnsafeBytes { srcBuf in
                 tj3Decompress8(tj, srcBuf.baseAddress, srcBuf.count, destBuf.baseAddress, Int32(tileTrait.pitchBytes), TJPF_RGB.rawValue)
             }
         }
