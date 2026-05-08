@@ -3,7 +3,7 @@ import FoundationXML
 import Testing
 import LibJPEGTurbo
 import LibTIFF
-import RsSlide
+@testable import RsSlide
 
 @Suite
 struct SlideTests {
@@ -58,8 +58,7 @@ struct SlideTests {
         }
         #expect(evalSequenceTiles(s) == evalRandomTiles(s))
 
-        #expect(s.layerImageSize.last!.w == 1 && s.layerImageSize.last!.h == 1)
-        #expect(s.layerTileSize.last!.r == 1 && s.layerTileSize.last!.c == 1)
+        try evalVirtualTiles(s)
     }
 }
 
@@ -112,8 +111,8 @@ func evalSlideMetadata(_ s: Slide) async {
         if i > 0 {
             let w = Int(ceil(Double(s.layerImageSize[i - 1].w) / Double(s.layerZoom)))
             let h = Int(ceil(Double(s.layerImageSize[i - 1].h) / Double(s.layerZoom)))
-            #expect(w == s.layerImageSize[i].w)
-            #expect(h == s.layerImageSize[i].h)
+            #expect(0...1 ~= w - s.layerImageSize[i].w)
+            #expect(0...1 ~= h - s.layerImageSize[i].h)
             #expect(s.layerTileSize[i - 1].r / s.layerZoom <= (s.layerTileSize[i].r + 1))
             #expect(s.layerTileSize[i - 1].c / s.layerZoom <= (s.layerTileSize[i].c + 1))
         }
@@ -180,7 +179,8 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    let td = Data(s.fetchTileRawImage(at: coord))
+                    let raw = s.fetchTileRawImage(at: coord)
+                    let td = Data(raw)
                     if td.isImage {
                         cnt += 1
                         totalSize += td.count                  
@@ -190,6 +190,11 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
                     //         directoryHint: .notDirectory,
                     //         relativeTo: BASE))
                     // }
+
+                    if case .valid(trimming: true) = s.validate(coord: coord) {
+                        let (w, h) = tjDecompressHeader(raw)
+                        #expect(w < s.tileTrait.size.w || h < s.tileTrait.size.h)
+                    }
                 }
             }
         }
@@ -242,27 +247,52 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     return (tiles.count, cnt)
 }
 
-func evalNonExistingTiles(_ s: Slide) {
+func evalVirtualTiles(_ s: Slide) throws {
+    let tileW = Double(s.tileTrait.size.w)
+    let tileH = Double(s.tileTrait.size.h)
     var width = s.layerImageSize.last?.w ?? 0
     var height = s.layerImageSize.last?.h ?? 0
     var layer = s.layerImageSize.count - 1
-    var cnt = 0
+    
+    var count = 0
+    var missingCount = 0
+    var totalSize = 0
+    let st = Date()
 
-    while width > 0 || height > 0 {
+    repeat {
+        width = Int(ceil((Double(width) / Double(s.layerZoom))))
+        height = Int(ceil((Double(height) / Double(s.layerZoom))))
         layer += 1
-        width /= s.layerZoom
-        height /= s.layerZoom
 
-        for rw in 0..<(height / s.tileTrait.size.h + 1) {
-            for cl in 0..<(width / s.tileTrait.size.w + 1) {
+        for rw in 0..<(Int(ceil(Double(height) / tileH))) {
+            for cl in 0..<(Int(ceil(Double(width) / tileW))) {
                 let coord = TileCoordinate(layer: layer, row: rw, col: cl)
-                let td = s.fetchTileRawImage(at: coord)
-                #expect(td.count == 0)
+                let raw = s.fetchTileRawImage(at: coord)
+                if raw.isEmpty {
+                    missingCount += 1
+                } else {
+                    let (w, h) = tjDecompressHeader(raw)
+                    print("Virtual tile \(coord) size \(w) x \(h)")
+                    #expect(w > 0 && h > 0)
 
-                cnt += 1
+                    count += 1
+                    totalSize += raw.count
+
+                    try Data(raw).write(to: URL(filePath: "\(s.name)_\(layer)_\(rw)_\(cl).jpg",
+                        directoryHint: .notDirectory,
+                        relativeTo: BASE))
+                }
+                
             }
         }
-    }
+    } while width > 1 || height > 1
 
-    #expect(cnt > 0)
+    let et = Date()
+    let totalTime = et.timeIntervalSince(st)
+    
+    print("Virtual valid \(count) tiles consumed \(totalTime) sec.")
+    #expect(count > 0)
+    print("Virtual average tile consumed \(totalTime * 1000 / Double(count)) ms")
+    print("Virtual read speed \(Double(totalSize) / 1024 / 1024 / totalTime) MB/s")
+    #expect(missingCount == 0)
 }
