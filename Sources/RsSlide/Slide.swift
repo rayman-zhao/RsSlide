@@ -48,8 +48,6 @@ public struct TileTrait: CustomStringConvertible {
     public let compression: CompressionHint
     public let pixelFormat: PixelFormatHint
     public let sampleBits: Int
-    public let pitchBytes: Int
-    public let maxBytes: Int
     public let rgbBackground: Int
     
     public var description: String {
@@ -58,6 +56,27 @@ public struct TileTrait: CustomStringConvertible {
             return "JPEG_RGB_24bits"
         default:
             fatalError()
+        }
+    }
+    
+    public var maxBytes: Int {
+        return size.h * pitchBytes
+    }
+
+    public var pixelBytes: Int {
+        return pixelFormat.rawValue * sampleBits / 8
+    }
+
+    public var pitchBytes: Int {
+        return size.w * pixelBytes
+    }
+
+    public var tjPF: TJPF {
+        switch pixelFormat {
+        case .rgb:
+            return TJPF_RGB
+        case .gray:
+            return TJPF_GRAY
         }
     }
     
@@ -70,8 +89,6 @@ public struct TileTrait: CustomStringConvertible {
         self.compression = compression
         self.pixelFormat = pixelFormat
         self.sampleBits = sampleBits
-        self.pitchBytes = width * pixelFormat.rawValue * sampleBits / 8
-        self.maxBytes = height * self.pitchBytes
         self.rgbBackground = rgbBackground
     }
 }
@@ -95,102 +112,58 @@ public protocol Slide {
     var tierCount: Int { get }
     var tierSpacing: Double { get }
 
-    func fetchLabelJPEGImage() -> [UInt8]
-    func fetchMacroJPEGImage() -> [UInt8]
-    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]
-}
+    var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? { get }
 
-extension Slide {
-    func validate(coord: TileCoordinate) -> Bool {
-        return 0..<tierCount ~= coord.tier
-        && 0..<layerTileSize.count ~= coord.layer
-        && 0..<layerTileSize[coord.layer].r ~= coord.row
-        && 0..<layerTileSize[coord.layer].c ~= coord.col
-    }
-
-    func trimTile(for rawImage: [UInt8], at coord: TileCoordinate) -> [UInt8] {
-        guard tileTrait.pixelFormat == .rgb && tileTrait.sampleBits == 8 && tileTrait.compression == .jpeg else { return rawImage }
-
-        let tileWidth = tileTrait.size.w
-        let tileHeight = tileTrait.size.h
-        var trimWidth = 0
-        var trimHeight = 0
-        if coord.row == layerTileSize[coord.layer].r - 1 {
-            trimHeight = (coord.row + 1) * tileHeight - layerImageSize[coord.layer].h
-        }
-        if coord.col == layerTileSize[coord.layer].c - 1 {
-            trimWidth = (coord.col + 1) * tileWidth - layerImageSize[coord.layer].w
-        }
-        guard trimWidth > 0 || trimHeight > 0 else { return rawImage }
-
-        let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
-        defer { tj3Destroy(tj) }
-
-        guard tj3DecompressHeader(tj, rawImage, rawImage.count) == 0 else { return rawImage }
-        let jpegWidth = tj3Get(tj, Int32(TJPARAM_JPEGWIDTH.rawValue))
-        let jpegHeight = tj3Get(tj, Int32(TJPARAM_JPEGHEIGHT.rawValue))
-        guard jpegWidth == tileWidth && jpegHeight == tileHeight else { return rawImage }
-
-        var tile = [UInt8](repeating: 0, count: tileTrait.maxBytes)
-        tile.withUnsafeMutableBytes { destBuf in
-             _ = rawImage.withUnsafeBytes { srcBuf in
-                tj3Decompress8(tj, srcBuf.baseAddress, srcBuf.count, destBuf.baseAddress, Int32(tileTrait.pitchBytes), TJPF_RGB.rawValue)
-            }
-        }
-
-        return tjCompress(tile, TJPF_RGB, tileWidth - trimWidth, tileHeight - trimHeight, tileTrait.pitchBytes)
-    }
+    func fetchLabelJPEGImage() -> [UInt8]?
+    func fetchMacroJPEGImage() -> [UInt8]?
+    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]?
 }
 
 public extension Slide {
-    func fetchThumbnailJPEGImage(with maxSize: Int = 512) -> [UInt8] {
+    func fetchTileImage(at coord: TileCoordinate) -> [UInt8]? {
+        switch validate(coord: coord) {
+            case .valid(trimming: false):
+                return fetchTileRawImage(at: coord)
+            case .valid(trimming: true):
+                return fetchTrimmedTileImage(at: coord)
+            case .virtual:
+                return fetchVirtualTileImage(at: coord)
+            case .invalid:
+                return nil
+        }
+    }
+
+    func fetchThumbnailJPEGImage(with maxSize: Int = 512) -> [UInt8]? {
         guard tileTrait.pixelFormat == .rgb
             && tileTrait.sampleBits == 8
             && tileTrait.compression == .jpeg else {
             log.error("Failed to fetch thumbnail JPEG image. Only support RGB24 JPEG format slide file.")
-            return []
+            return nil
         }
 
+        // Find the most suitable layer for thumbnail generation.
         var layer = layerImageSize.count - 1
         while (layer > 0 && layerImageSize[layer].w < maxSize && layerImageSize[layer].h < maxSize) {
             layer -= 1
         }
-        guard layer >= 0 else { return [] }
-
-        let layerWidth = layerImageSize[layer].w
-        let layerHeight = layerImageSize[layer].h
-        let layerPitch = layerWidth * 3
-        var layerRGBImage = [UInt8](repeating: 0, count: layerPitch * layerHeight)
-
-        let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
-        defer { tj3Destroy(tj) }
-
-        layerRGBImage.withUnsafeMutableBytes { buf in
-            for row in 0..<layerTileSize[layer].r {
-                for col in 0..<layerTileSize[layer].c {
-                    let coord = TileCoordinate(layer: layer, row: row, col: col)
-                    let img = fetchTileRawImage(at: coord)
-                    _ = img.withUnsafeBytes { tile_buf in 
-                        tj3Decompress8(tj, tile_buf.baseAddress, tile_buf.count,
-                            buf.baseAddress! + row * tileTrait.size.h * layerPitch + col * tileTrait.size.w * 3, Int32(layerPitch), TJPF_RGB.rawValue)
-                    }
-                }
-            }
-        }
+        
+        guard layer >= 0 else { return nil }
+        guard let pxdata = fetchPixelData(at: layer) else { return nil }
 
         var thumbnailWidth = maxSize
         var thumbnailHeight = maxSize
-        if layerWidth > layerHeight {
-            thumbnailHeight = thumbnailWidth * layerHeight / layerWidth
-        } else if layerWidth < layerHeight {
-            thumbnailWidth = thumbnailHeight * layerWidth / layerHeight
+        if pxdata.width > pxdata.height {
+            thumbnailHeight = thumbnailWidth * pxdata.height / pxdata.width
+        } else if pxdata.width < pxdata.height {
+            thumbnailWidth = thumbnailHeight * pxdata.width / pxdata.height
         }
 
-        if (thumbnailWidth, thumbnailHeight) == (layerWidth, layerHeight) {
-            return tjCompress(layerRGBImage, TJPF_RGB, layerWidth, layerHeight)
+        if (thumbnailWidth, thumbnailHeight) == (pxdata.width, pxdata.height) {
+            return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
         } else {
-            let thumbnail = scaleImage(layerRGBImage, layerWidth, layerHeight, thumbnailWidth, thumbnailHeight)
-            return tjCompress(thumbnail, TJPF_RGB, thumbnailWidth, thumbnailHeight)
+            let trimmed = trimPixelData(from: pxdata)
+            let thumbnail = scaleImage(trimmed.pixels, trimmed.width, trimmed.height, thumbnailWidth, thumbnailHeight)
+            return tjCompress(thumbnail, tileTrait.tjPF, thumbnailWidth, thumbnailHeight)
         }
     }
 }

@@ -47,12 +47,12 @@ struct SlideTests {
             if label {
                 try evalSlideLabelImage(s)
             } else {
-                #expect(s.fetchLabelJPEGImage().isEmpty)
+                #expect(s.fetchLabelJPEGImage() == nil)
             }
             if macro {
                 try evalSlideMacroImage(s)
             } else {
-                #expect(s.fetchMacroJPEGImage().isEmpty)
+                #expect(s.fetchMacroJPEGImage() == nil)
             }
             try evalSlideThumbnailImage(s)
         }
@@ -132,7 +132,7 @@ func evalSlideMetadata(_ s: Slide) async {
 
 func evalSlideLabelImage(_ s: Slide) throws {
     let st = Date()
-    let img = Data(s.fetchLabelJPEGImage())
+    let img = Data(s.fetchLabelJPEGImage()!)
     let et = Date()
     print("Label image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
@@ -144,7 +144,7 @@ func evalSlideLabelImage(_ s: Slide) throws {
 
 func evalSlideMacroImage(_ s: Slide) throws {
     let st = Date()
-    let img = Data(s.fetchMacroJPEGImage())
+    let img = Data(s.fetchMacroJPEGImage()!)
     let et = Date()
     print("Macro image consumed \(et.timeIntervalSince(st) * 1000) ms")
     #expect(img.isJPEG)
@@ -156,7 +156,7 @@ func evalSlideMacroImage(_ s: Slide) throws {
 
 func evalSlideThumbnailImage(_ s: Slide) throws {
     let st = Date()
-    let jpg = s.fetchThumbnailJPEGImage(with: 512)
+    let jpg = s.fetchThumbnailJPEGImage(with: 512)!
     let (w, h) = tjDecompressHeader(jpg)
     #expect(w <= 512 && h <= 512)
     let img = Data(jpg)
@@ -179,7 +179,8 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    let raw = s.fetchTileRawImage(at: coord)
+                    guard let raw = s.fetchTileImage(at: coord) else { continue }
+                    
                     let td = Data(raw)
                     if td.isImage {
                         cnt += 1
@@ -228,8 +229,8 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     var cnt = 0 
     let st = Date()
     for coord in tiles {
-        let td = Data(s.fetchTileRawImage(at: coord))
-        if td.isImage{
+        guard let td = s.fetchTileImage(at: coord) else { continue }
+        if Data(td).isImage{
             cnt += 1
             totalSize += td.count
             
@@ -267,22 +268,21 @@ func evalVirtualTiles(_ s: Slide) throws {
         for rw in 0..<(Int(ceil(Double(height) / tileH))) {
             for cl in 0..<(Int(ceil(Double(width) / tileW))) {
                 let coord = TileCoordinate(layer: layer, row: rw, col: cl)
-                let raw = s.fetchTileRawImage(at: coord)
-                if raw.isEmpty {
+                guard let raw = s.fetchTileImage(at: coord) else {
                     missingCount += 1
-                } else {
-                    let (w, h) = tjDecompressHeader(raw)
-                    print("Virtual tile \(coord) size \(w) x \(h)")
-                    #expect(w > 0 && h > 0)
-
-                    count += 1
-                    totalSize += raw.count
-
-                    try Data(raw).write(to: URL(filePath: "\(s.name)_\(layer)_\(rw)_\(cl).jpg",
-                        directoryHint: .notDirectory,
-                        relativeTo: BASE))
+                    continue
                 }
-                
+
+                let (w, h) = tjDecompressHeader(raw)
+                print("Virtual tile \(coord) size \(w) x \(h)")
+                #expect(w > 0 && h > 0)
+
+                count += 1
+                totalSize += raw.count
+
+                // try Data(raw).write(to: URL(filePath: "\(s.name)_\(layer)_\(rw)_\(cl).jpg",
+                //     directoryHint: .notDirectory,
+                //     relativeTo: BASE))
             }
         }
     } while width > 1 || height > 1
