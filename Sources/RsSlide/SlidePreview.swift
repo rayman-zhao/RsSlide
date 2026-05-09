@@ -1,5 +1,5 @@
 import Foundation
 
 public protocol SlidePreview {
-   func fetchMacroJPEGImage() -> [UInt8]
+   func fetchMacroJPEGImage() -> [UInt8]?
 }

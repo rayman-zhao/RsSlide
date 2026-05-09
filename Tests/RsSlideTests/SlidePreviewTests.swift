@@ -45,7 +45,7 @@ struct SlidePreviewTests {
 
     func evalSlidePreviewMacroImage(_ sp: SlidePreview) {
         let st = Date()
-        let img = Data(sp.fetchMacroJPEGImage())
+        let img = Data(sp.fetchMacroJPEGImage()!)
         let et = Date()
         print("Macro image consumed \(et.timeIntervalSince(st) * 1000) ms")
         #expect(img.isJPEG)
