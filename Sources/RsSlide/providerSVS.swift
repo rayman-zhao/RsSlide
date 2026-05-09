@@ -6,18 +6,19 @@ import RsHelper
 struct SVSPreview : SlidePreview {
     let path: URL
 
-    func fetchMacroJPEGImage() -> [UInt8] {
+    func fetchMacroJPEGImage() -> [UInt8]? {
     #if os(Windows)
         let tiff = TIFFOpenW(path.path.wideString, "rh")
     #else
         let tiff = TIFFOpen(path.path, "rh")
     #endif
-        guard tiff != nil else { return [] }
+        guard tiff != nil else { return nil }
         defer {
             TIFFClose(tiff)
         }
         
-        return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
+        let macro = TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
+        return macro.isEmpty ? nil : macro
     }
 }
 
@@ -91,12 +92,14 @@ final class SVS : Slide {
     
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, labelDir)
+        let label = TIFFReadJPEGImage(tiff, labelDir)
+        return label.isEmpty ? nil : label
     }
     
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, macroDir)
+        let macro = TIFFReadJPEGImage(tiff, macroDir)
+        return macro.isEmpty ? nil : macro
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
