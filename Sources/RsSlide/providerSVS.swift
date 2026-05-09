@@ -55,6 +55,10 @@ final class SVS : Slide {
     let extendXMLString: String = ""
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
+
+    lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
+        fetchPixelData(at: layerTileSize.count - 1)
+    }()
     
     init?(path: URL) {
     #if os(Windows)
@@ -85,19 +89,19 @@ final class SVS : Slide {
         TIFFClose(tiff)
     }
     
-    func fetchLabelJPEGImage() -> [UInt8] {
-        guard labelDir != 0 else { return [] }
+    func fetchLabelJPEGImage() -> [UInt8]? {
+        guard labelDir != 0 else { return nil }
         return TIFFReadJPEGImage(tiff, labelDir)
     }
     
-    func fetchMacroJPEGImage() -> [UInt8] {
-        guard macroDir != 0 else { return [] }
+    func fetchMacroJPEGImage() -> [UInt8]? {
+        guard macroDir != 0 else { return nil }
         return TIFFReadJPEGImage(tiff, macroDir)
     }
 
-    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8] {
-        guard validate(coord: coord) else { return [] }
-        guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return [] }
+    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
+        guard case .valid = validate(coord: coord) else { return nil }
+        guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return nil }
         
         let tid = TIFFComputeTile(tiff, UInt32(coord.col * tileTrait.size.w), UInt32(coord.row * tileTrait.size.h), 0, 0)
         let bufSize = tileTrait.maxBytes
@@ -105,14 +109,11 @@ final class SVS : Slide {
         // TODO: var span = buf.mutableSpan
         if tilePhotometric == PHOTOMETRIC_RGB {
             let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
-            if (tileSize > 0) {
-                return trimTile(for: tjCompress(buf, TJPF_RGB, tileTrait.size.w, tileTrait.size.h), at: coord)
-            } else {
-                return []
-            }
+            guard tileSize > 0 else { return nil }
+            return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h)
         } else {
             let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
-            return trimTile(for: Array(buf[..<tileSize]), at: coord)
+            return Array(buf[..<tileSize])
         }
     }
 
