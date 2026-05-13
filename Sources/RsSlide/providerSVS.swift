@@ -138,17 +138,17 @@ final class SVS : Slide {
             if dir == 0 && tw != nil { // First directory always be bottom layer image.
                 importMetadata(from: dir)
                 importLayer(from: dir)
-            }
-            else if tw != nil { // Sequential reduced layer image.
+            } else if tw != nil { // Sequential reduced layer image.
                 importLayer(from: dir)
-            }
-            else if dir == 1 { // Second non-reduced directory, should be thumbnail image.
-                
-            }
-            else if TIFFLastDirectory(tiff) == 0 { // Second last directory, should be label image.
+            } else if dir == 1 {
+                // Ignore second non-reduced directory, should be thumbnail image.
+            } else if labelDir == 0, let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION), String(cString: desc).lowercased().contains("label") {
                 labelDir = dir
-            }
-            else { // Last directory, should be macro image.
+            } else if macroDir == 0, let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION), String(cString: desc).lowercased().contains("macro") {
+                macroDir = dir
+            } else if labelDir == 0 && TIFFLastDirectory(tiff) == 0 { // Second last directory, should be label image.
+                labelDir = dir
+            } else if macroDir == 0 && TIFFLastDirectory(tiff) == 1 { // Last directory, should be macro image.
                 macroDir = dir
             }
             
