@@ -45,6 +45,8 @@ public extension URL {
             switch self.pathExtension.lowercased() {
             case "svs", "tif":
                 return .isSlide(SlideProvider({ SVSPreview(path: self) }, { SVS(path: self) }))
+            case "csp":
+                return .isSlide(SlideProvider({ CSPPreview(path: self) }, { CSP(path: self) }))
 #if MORE_PROVIDERS_AVAILABLE
             case "mds":
                 return .isSlide(SlideProvider({ MDSPreview(path: self) }, { MDS(path: self) }))

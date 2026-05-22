@@ -21,6 +21,7 @@ struct SlidePreviewTests {
         ("MDSX/slide.mdsx", true),
         ("MDSX/mdsx_test_enc/1.mdsx", true),
         ("迪英加/L1-4.svs", false),
+        ("CSP/sample.csp", false),
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
