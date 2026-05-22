@@ -1,0 +1,4 @@
+module CVendorSDKs [system] {
+    header "Include/csp_api.h"
+    export *
+}

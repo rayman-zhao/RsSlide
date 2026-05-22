@@ -23,10 +23,23 @@ let package = Package(
             dependencies: [
                 .product(name: "RsHelper", package: "RsHelper"),
                 .product(name: "RsPack", package: "RsPack"),
+                "CVendorSDKs",
             ],
             swiftSettings: [
                 //.strictMemorySafety(true),
                 .define("MORE_PROVIDERS_AVAILABLE"),
+            ],
+        ),
+        .target(
+            name: "CVendorSDKs",
+            dependencies: [
+            ],
+            exclude: [
+            ],
+            sources: [
+                "./Sources"
+            ],
+            cxxSettings: [
             ],
         ),
         .testTarget(
