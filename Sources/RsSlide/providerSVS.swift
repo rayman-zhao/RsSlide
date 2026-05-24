@@ -30,17 +30,15 @@ final class SVS : Slide {
     var labelDir: UInt32 = 0
     var imageDesc = ""
     
-    var id: UUID {
-        get {
-            let fingerprint = """
-            dataSize: \(dataSize)
-            imageDesc: \(imageDesc)
-            layers: \(layerImageSize)
-            """
+    lazy var id: UUID = {
+        let fingerprint = """
+        dataSize: \(dataSize)
+        imageDesc: \(imageDesc)
+        layers: \(layerImageSize)
+        """
 
-            return Data(fingerprint.utf8).hashUUID
-        }
-    }
+        return Data(fingerprint.utf8).hashUUID
+    }()
     var mainPath: String
     var createTime: Date
     var modifyTime: Date

@@ -112,6 +112,7 @@ public protocol Slide {
     var tierCount: Int { get }
     var tierSpacing: Double { get }
 
+    // Each provider has to implement this storage property for generate once
     var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? { get }
 
     func fetchLabelJPEGImage() -> [UInt8]?
