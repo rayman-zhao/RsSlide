@@ -22,15 +22,20 @@ struct CSPPreview : SlidePreview {
     }
 }
 
-final class CSP : Slide {    
-    var id: Foundation.UUID {
-        get {
-            let fingerprint = """
-            """
+final class CSP : Slide {   
+    let cspReader: UnsafeRawPointer
+    var cspConfig = CspConfig()
+    var cspScannerInfo = CspScannerInfo()
 
-            return Data(fingerprint.utf8).hashUUID
-        }
-    }
+    lazy var id: Foundation.UUID = {
+        let fingerprint = """
+        dataSize: \(dataSize)
+        cspConfig: \(cspConfig)
+        cspScannerInfo: \(cspScannerInfo)
+        """
+
+        return Data(fingerprint.utf8).hashUUID
+    }()
     var mainPath: String
     var createTime: Date
     var modifyTime: Date
@@ -48,22 +53,66 @@ final class CSP : Slide {
     var layerTileSize: [(r: Int, c: Int)] = []
 
     lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
-        return nil
+        fetchPixelData(at: layerTileSize.count - 1)
     }()
     
     init?(path: URL) {
-        return nil
+        guard let fp = dll.getCspReader?(path.filePath.oemCString) else { return nil }
+        cspReader = fp
+
+        mainPath = path.filePath
+        let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
+        modifyTime = rv?.contentModificationDate ?? Date(timeIntervalSince1970: 0)
+        name = path.deletingPathExtension().lastPathComponent
+        format = path.pathExtension.uppercased()
+        dataSize = path.fileSize
+
+        guard dll.cspReadScannerInfo?(cspReader, &cspScannerInfo) == 0 else { return nil }
+        guard dll.cspReadConfig?(cspReader, &cspConfig) == 0 else { return nil }
+        scanObjective = Int(cspConfig.scanRatio)
+        scanScale = Double(cspConfig.mpp)
+        tileTrait = TileTrait(width: Int(cspConfig.tileWidth), height: Int(cspConfig.tileHeight))
+        layerZoom = Int(cspConfig.downsamplingRatio)
+
+        var imageWidth = Float(cspConfig.imageWidth)
+        var imageHeight = Float(cspConfig.imageHeight)
+        var layerNum: UInt32 = 0
+        guard dll.cspGetLayerNum?(cspReader, &layerNum) == 0 && layerNum > 0 else { return nil }
+        for _ in 0..<layerNum {
+            layerImageSize.append((Int(imageWidth), Int(imageHeight)))
+            layerTileSize.append((
+                Int(ceil(imageHeight / Float(cspConfig.tileHeight))),
+                Int(ceil(imageWidth / Float(cspConfig.tileWidth)))
+            ))
+
+            imageWidth = ceil(imageWidth / cspConfig.downsamplingRatio)
+            imageHeight = ceil(imageHeight / cspConfig.downsamplingRatio)
+        }
     }
 
     deinit {
+        dll.destroyCspReader?(cspReader)
     }
     
     func fetchLabelJPEGImage() -> [UInt8]? {
-        return nil
+        var info = CspImageInfo()
+        guard dll.cspReadLabel?(cspReader, &info) == 0 else { return nil }
+        defer { dll.cspDestroyImage?(&info) }
+
+        var pixels = [UInt8](repeating: 0, count: Int(info.dataLen))
+        memcpy(&pixels, info.data, Int(info.dataLen))
+        return pixels
     }
     
     func fetchMacroJPEGImage() -> [UInt8]? {
-        return nil
+        var info = CspImageInfo()
+        guard dll.cspReadPreview?(cspReader, &info) == 0 else { return nil }
+        defer { dll.cspDestroyImage?(&info) }
+
+        var pixels = [UInt8](repeating: 0, count: Int(info.dataLen))
+        memcpy(&pixels, info.data, Int(info.dataLen))
+        return pixels
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
@@ -79,6 +128,9 @@ fileprivate final class libcsp_sdk: @unchecked Sendable {
     let cspReadPreview: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
     let cspReadLabel: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
     let cspDestroyImage: (@convention(c) (UnsafePointer<CspImageInfo>) -> Void)?
+    let cspReadScannerInfo: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspScannerInfo>) -> Int32)?
+    let cspReadConfig: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspConfig>) -> Int32)?
+    let cspGetLayerNum: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<UInt32>) -> Int32)?
     
     init() {
         getCspReader = dll.getProc("GetCspReader")
@@ -86,5 +138,8 @@ fileprivate final class libcsp_sdk: @unchecked Sendable {
         cspReadPreview = dll.getProc("CspReadPreview")
         cspReadLabel = dll.getProc("CspReadLabel")
         cspDestroyImage = dll.getProc("CspDestroyImage")
+        cspReadScannerInfo = dll.getProc("CspReadScannerInfo")
+        cspReadConfig = dll.getProc("CspReadConfig")
+        cspGetLayerNum = dll.getProc("CspGetLayerNum")
     }
 }
