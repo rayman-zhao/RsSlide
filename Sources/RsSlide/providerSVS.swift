@@ -1,6 +1,7 @@
 import Foundation
 import LibTIFF
 import LibJPEGTurbo
+import LittleCMS
 import RsHelper
 
 struct SVSPreview : SlidePreview {
@@ -23,12 +24,15 @@ struct SVSPreview : SlidePreview {
 }
 
 final class SVS : Slide {
-    let tiff: OpaquePointer?
+    let tiff: OpaquePointer
     var layerDir: [UInt32] = []
     var tilePhotometric = 0
     var macroDir: UInt32 = 0
     var labelDir: UInt32 = 0
     var imageDesc = ""
+    var quality = 85
+    var gamma: Double? = nil
+    var cmsTransform: cmsHTRANSFORM? = nil
     
     lazy var id: UUID = {
         let fingerprint = """
@@ -61,11 +65,11 @@ final class SVS : Slide {
     
     init?(path: URL) {
     #if os(Windows)
-        tiff = TIFFOpenW(path.path.wideString, "rh")
+        guard let tiff = TIFFOpenW(path.path.wideString, "rh") else { return nil }
     #else
-        tiff = TIFFOpen(path.path, "rh") // h - Read TIFF header only, do not load the first directory.
+        guard let tiff = TIFFOpen(path.path, "rh") else { return nil } // h - Read TIFF header only, do not load the first directory.
     #endif
-        guard tiff != nil else { return nil }
+        self.tiff = tiff
         
         mainPath = path.path
         let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
@@ -86,6 +90,9 @@ final class SVS : Slide {
     
     deinit {
         TIFFClose(tiff)
+        if let cmsTransform {
+            cmsDeleteTransform(cmsTransform)
+        }
     }
     
     func fetchLabelJPEGImage() -> [UInt8]? {
@@ -103,15 +110,30 @@ final class SVS : Slide {
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
         guard case .valid = validate(coord: coord) else { return nil }
         guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return nil }
-        
-        let tid = TIFFComputeTile(tiff, UInt32(coord.col * tileTrait.size.w), UInt32(coord.row * tileTrait.size.h), 0, 0)
+
+        let tileX = UInt32(coord.col * tileTrait.size.w)
+        let tileY = UInt32(coord.row * tileTrait.size.h)
+
+        if let cmsTransform {
+            let bufSize = tileTrait.size.w * tileTrait.size.h
+            var buf = [UInt32](repeating: 0, count: bufSize)
+            guard TIFFReadRGBATile(tiff, tileX, tileY, &buf) > 0 else { return nil }
+
+            var buf2 = [UInt32](repeating: 0, count: bufSize)
+            cmsDoTransform(cmsTransform, buf, &buf2, cmsUInt32Number(bufSize))
+            
+            let jpg = tjCompress(buf2, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
+            return jpg
+        }
+
+        let tid = TIFFComputeTile(tiff, tileX, tileY, 0, 0)
         let bufSize = tileTrait.maxBytes
         var buf = [UInt8](repeating: 0, count: bufSize)
         // TODO: var span = buf.mutableSpan
         if tilePhotometric == PHOTOMETRIC_RGB {
             let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
             guard tileSize > 0 else { return nil }
-            return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h)
+            return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h, 0, quality)
         } else {
             let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
             return Array(buf[..<tileSize])
@@ -190,8 +212,40 @@ final class SVS : Slide {
                let v = scn.scanDouble() {
                 scanScale = v
             }
+
+            scn.currentIndex = scn.string.startIndex
+            if scn.scanUpToString("Q") != nil,
+               scn.scanString("Q") != nil,
+               scn.scanString("=") != nil,
+               let v = scn.scanInt() {
+                quality = v
+            }
+
+            scn.currentIndex = scn.string.startIndex
+            if scn.scanUpToString("Gamma") != nil,
+               scn.scanString("Gamma") != nil,
+               scn.scanString("=") != nil,
+               let v = scn.scanDouble() {
+                gamma = v
+            }
         }
-        
+
+        let icc: (count: UInt32?, data: UnsafeMutableRawPointer?) = TIFFGetField(tiff, TIFFTAG_ICCPROFILE)
+        if let iccCount = icc.count,
+           let iccData = icc.data,
+           let iccProfile = cmsOpenProfileFromMem(iccData, iccCount) {
+            defer { cmsCloseProfile(iccProfile) }
+
+            if cmsGetColorSpace(iccProfile) == cmsSigRgbData {
+                let sRGB = cmsCreate_sRGBProfile()!
+                defer { cmsCloseProfile(sRGB) }
+
+                cmsTransform = cmsCreateTransform(iccProfile, CMS_TYPE_RGBA_8, sRGB, CMS_TYPE_RGBA_8, cmsUInt32Number(INTENT_PERCEPTUAL), 0)
+            } else {
+                log.warning("ICC profile color space is not RGB, ignored")
+            }
+        }
+       
         if scanScale == 0.0,
            let res: Float = TIFFGetField(tiff, TIFFTAG_XRESOLUTION),
            let unit: UInt16 = TIFFGetField(tiff, TIFFTAG_RESOLUTIONUNIT) {
