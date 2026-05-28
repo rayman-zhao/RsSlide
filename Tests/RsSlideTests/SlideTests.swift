@@ -33,6 +33,7 @@ struct SlideTests {
         ("SVS/201203757.svs", "4090FE56-7C14-569F-B8F0-DDEFB0D68A9D", "201203757", "SVS", true, false, false),
         ("CSP/sample.csp", "1C63EF81-52C9-54AA-B255-17D5F877E08F", "sample", "CSP", true, true, false),
         ("SVS/icc.svs", "2A8FA2CA-4B4C-501F-8AE1-1C2570D5BFC9", "icc", "SVS", true, true, false),
+        ("秉理/G202601407AFP.svs", "7447E452-43A5-51E5-962A-0C11737CDDB5", "G202601407AFP", "SVS", true, true, false),
     ])
     func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
@@ -182,12 +183,17 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    guard let raw = s.fetchTileImage(at: coord) else { continue }
+                    guard let raw = s.fetchTileImage(at: coord) else {
+                        print("Tile at \(coord) is nil")
+                        continue
+                    }
                     
                     let td = Data(raw)
                     if td.isImage {
                         cnt += 1
                         totalSize += td.count                  
+                    } else {
+                        print("Tile at \(coord) is not an image")
                     }
                     // if li == s.layerTileSize.count - 1 {
                     //     try? td.write(to: URL(filePath: "tile_\(li)_\(rw)_\(cl).jpg",
