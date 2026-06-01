@@ -5,7 +5,7 @@ extension Slide {
     func saveAsJPEG(to url: URL) throws {
         var layer: Int? = nil
         for img in layerImageSize.enumerated() {
-            if img.element.w < Int32.max && img.element.h < Int32.max {
+            if img.element.w < UInt16.max && img.element.h < UInt16.max {
                 layer = img.offset
                 break
             }
