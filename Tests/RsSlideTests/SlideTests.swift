@@ -31,7 +31,7 @@ struct SlideTests {
         ("MDSX/mdsx_test_enc/1.mdsx", "7B517EA2-2601-4279-A2B9-30E1415E5935", "mdsx_test_enc", "MDSX", true, true, true),
         ("迪英加/L1-4.svs", "0A508412-C06C-5A09-BED2-DAC5F736B9D7", "L1-4", "SVS", true, true, false),
         ("SVS/201203757.svs", "4090FE56-7C14-569F-B8F0-DDEFB0D68A9D", "201203757", "SVS", true, false, false),
-        ("CSP/sample.csp", "1C63EF81-52C9-54AA-B255-17D5F877E08F", "sample", "CSP", true, true, false),
+        ("CSP/WC.csp", "151A7101-2885-5B72-8138-F59051F9039B", "WC", "CSP", true, true, false),
         ("SVS/icc.svs", "2A8FA2CA-4B4C-501F-8AE1-1C2570D5BFC9", "icc", "SVS", true, true, false),
         ("秉理/G202601407AFP.svs", "7447E452-43A5-51E5-962A-0C11737CDDB5", "G202601407AFP", "SVS", true, true, false),
     ])
