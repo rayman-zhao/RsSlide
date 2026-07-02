@@ -149,7 +149,7 @@ public extension Slide {
         }
         
         guard layer >= 0 else { return nil }
-        guard let pxdata = fetchPixelData(at: layer) else { return nil }
+        guard let pxdata = (layer == layerImageSize.count - 1) ? baseLayerPixelData : fetchPixelData(at: layer) else { return nil }
 
         var thumbnailWidth = maxSize
         var thumbnailHeight = maxSize
