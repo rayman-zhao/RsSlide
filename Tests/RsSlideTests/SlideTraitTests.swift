@@ -17,6 +17,8 @@ struct TraitTests {
         ("MDS/0002/", "isSlide", true, true),
         ("MDS/0002/1.mds", "isSlide", true, false),
         ("CSP/sample.csp", "isSlide", false, false),
+        ("QPTIFF/_20250228132506.qptiff", "isSlide", false, false),
+        ("OMETIFF/Leica-1.ome.tiff", "isSlide", false, false),
     ])
     func makeTrait(_ fn: String, _ st: String, _ more: Bool, _ dir: Bool) async throws {
         var url: URL? = nil
