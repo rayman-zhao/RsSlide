@@ -7,16 +7,24 @@ struct OMETIFFPreview : SlidePreview {
 
     func fetchMacroJPEGImage() -> [UInt8]? {
     #if os(Windows)
-        let tiff = TIFFOpenW(path.path.wideString, "rh")
+        let tiff = TIFFOpenW(path.path.wideString, "r")
     #else
-        let tiff = TIFFOpen(path.path, "rh")
+        let tiff = TIFFOpen(path.path, "r")
     #endif
         guard tiff != nil else { return nil }
         defer {
             TIFFClose(tiff)
         }
+
+        let subifd: (count: UInt16?, offset: UnsafeMutablePointer<UInt64>?) = TIFFGetField(tiff, TIFFTAG_SUBIFD)
+        if let count = subifd.count, let offset = subifd.offset, count > 0 {
+            let macro = TIFFReadJPEGImage(tiff, 0, offset.pointee)
+            if !macro.isEmpty {
+                return macro
+            }
+        }
         
-        let macro = TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
+        let macro = TIFFReadJPEGImage(tiff, 0)
         return macro.isEmpty ? nil : macro
     }
 }

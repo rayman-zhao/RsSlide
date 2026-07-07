@@ -22,6 +22,8 @@ struct SlidePreviewTests {
         ("MDSX/mdsx_test_enc/1.mdsx", true),
         ("迪英加/L1-4.svs", false),
         ("CSP/sample.csp", false),
+        ("OMETIFF/microscope_ometiff.ome.tiff", false),
+        ("OMETIFF/Leica-1.ome.tiff", false),
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
