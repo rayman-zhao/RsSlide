@@ -1,7 +1,7 @@
 import Foundation
 import LibTIFF
 import LibJPEGTurbo
-import RsHelper
+import RsFoundation
 
 extension Slide {
     func saveAsSVS(to url: URL) throws {

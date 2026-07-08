@@ -14,14 +14,14 @@ let package = Package(
             targets: ["RsSlide"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/rayman-zhao/RsHelper", branch: "main"),
+        .package(url: "https://github.com/rayman-zhao/RsFoundation", branch: "main"),
         .package(url: "https://github.com/rayman-zhao/RsPack", branch: "main"),
     ],
     targets: [
         .target(
             name: "RsSlide",
             dependencies: [
-                .product(name: "RsHelper", package: "RsHelper"),
+                .product(name: "RsFoundation", package: "RsFoundation"),
                 .product(name: "RsPack", package: "RsPack"),
                 "CVendorSDKs",
             ],

@@ -1,6 +1,6 @@
 import Foundation
 import WinSDK
-import RsHelper
+import RsFoundation
 
 final class DllLoader {
     private let dll: HMODULE?

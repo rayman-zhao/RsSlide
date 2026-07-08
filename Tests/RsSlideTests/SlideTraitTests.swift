@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import RsSlide
-import RsHelper
+import RsFoundation
 
 @Suite
 struct TraitTests {

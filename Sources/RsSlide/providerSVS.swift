@@ -2,7 +2,7 @@ import Foundation
 import LibTIFF
 import LibJPEGTurbo
 import LittleCMS
-import RsHelper
+import RsFoundation
 
 struct SVSPreview : SlidePreview {
     let path: URL
@@ -18,8 +18,7 @@ struct SVSPreview : SlidePreview {
             TIFFClose(tiff)
         }
         
-        let macro = TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
-        return macro.isEmpty ? nil : macro
+        return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
     }
 }
 
@@ -97,14 +96,12 @@ final class SVS : Slide {
     
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        let label = TIFFReadJPEGImage(tiff, labelDir)
-        return label.isEmpty ? nil : label
+        return TIFFReadJPEGImage(tiff, labelDir)
     }
     
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
-        let macro = TIFFReadJPEGImage(tiff, macroDir)
-        return macro.isEmpty ? nil : macro
+        return TIFFReadJPEGImage(tiff, macroDir)
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {

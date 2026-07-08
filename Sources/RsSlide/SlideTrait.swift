@@ -1,5 +1,5 @@
 import Foundation
-import RsHelper
+import RsFoundation
 
 public struct SlideProvider {
     public let makePreview: () -> SlidePreview

@@ -1,6 +1,6 @@
 import Foundation
 import LibTIFF
-import RsHelper
+import RsFoundation
 
 struct OMETIFFPreview : SlidePreview {
     let path: URL
@@ -17,15 +17,13 @@ struct OMETIFFPreview : SlidePreview {
         }
 
         let subifd: (count: UInt16?, offset: UnsafeMutablePointer<UInt64>?) = TIFFGetField(tiff, TIFFTAG_SUBIFD)
-        if let count = subifd.count, let offset = subifd.offset, count > 0 {
-            let macro = TIFFReadJPEGImage(tiff, 0, offset.pointee)
-            if !macro.isEmpty {
-                return macro
-            }
+        if let count = subifd.count,
+            let offset = subifd.offset, count > 0,
+            let macro = TIFFReadJPEGImage(tiff, 0, offset.pointee) { // Usually the macro image in mainifd is too big, so that use the first subifd instead.
+            return macro
         }
         
-        let macro = TIFFReadJPEGImage(tiff, 0)
-        return macro.isEmpty ? nil : macro
+        return TIFFReadJPEGImage(tiff, 0)
     }
 }
 
@@ -99,14 +97,12 @@ final class OMETIFF : Slide {
 
      func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        let label = TIFFReadJPEGImage(tiff, labelDir)
-        return label.isEmpty ? nil : label
+        return TIFFReadJPEGImage(tiff, labelDir)
     }
     
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
-        let macro = TIFFReadJPEGImage(tiff, macroDir)
-        return macro.isEmpty ? nil : macro
+        return TIFFReadJPEGImage(tiff, macroDir)
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {

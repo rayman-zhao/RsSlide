@@ -1,6 +1,6 @@
 import Foundation
 import WinSDK
-import RsHelper
+import RsFoundation
 import CVendorSDKs
 
 fileprivate let dll = libcsp_sdk()

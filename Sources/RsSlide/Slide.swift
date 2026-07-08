@@ -1,7 +1,7 @@
 import Foundation
 import LibJPEGTurbo
 import MBL
-import RsHelper
+import RsFoundation
 
 public struct TileCoordinate {
     let layer: Int

@@ -1,6 +1,6 @@
 import Foundation
 import LibJPEGTurbo
-import RsHelper
+import RsFoundation
 
 enum TileCoordinateTrait {
     case valid(trimming: Bool)

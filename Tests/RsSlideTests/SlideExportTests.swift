@@ -85,7 +85,7 @@ struct ExportTests {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    guard let raw = s.fetchTileImage(at: coord) else { continue }
+                    guard let _ = s.fetchTileImage(at: coord) else { continue }
                     cnt += 1
                 }
             }
