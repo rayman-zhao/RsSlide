@@ -32,9 +32,10 @@ struct OMETIFFPreview : SlidePreview {
 final class OMETIFF : Slide {
     let tiff: OpaquePointer
     var layerDir: UInt32 = 0
-    var layerDirOffset: [UInt64] = []
+    var layerDirOffset: [UInt64?] = []
     var tilePhotometric = 0
     var labelDir: UInt32 = 0
+    var quality = 85
     
     var id: UUID = UUID()
     var mainPath: String
@@ -105,26 +106,23 @@ final class OMETIFF : Slide {
     }
 
     func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
-        // guard case .valid = validate(coord: coord) else { return nil }
-        // guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return nil }
+        guard case .valid = validate(coord: coord) else { return nil }
+        guard TIFFSetDirectory(tiff, layerDir, layerDirOffset[coord.layer]) else { return nil }
 
-        // let tileX = UInt32(coord.col * tileTrait.size.w)
-        // let tileY = UInt32(coord.row * tileTrait.size.h)
-
-        // let tid = TIFFComputeTile(tiff, tileX, tileY, 0, 0)
-        // let bufSize = tileTrait.maxBytes
-        // var buf = [UInt8](repeating: 0, count: bufSize)
-        // // TODO: var span = buf.mutableSpan
-        // if tilePhotometric == PHOTOMETRIC_RGB {
-        //     let tileSize = Int(TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)))
-        //     guard tileSize > 0 else { return nil }
-        //     return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h, 0, quality)
-        // } else {
-        //     let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
-        //     return Array(buf[..<tileSize])
-        // }
-
-        return nil
+        let tileX = UInt32(coord.col * tileTrait.size.w)
+        let tileY = UInt32(coord.row * tileTrait.size.h)
+        let tid = TIFFComputeTile(tiff, tileX, tileY, 0, 0)
+        let pixelCount = tileTrait.size.w * tileTrait.size.h
+        if tilePhotometric == PHOTOMETRIC_RGB {
+            var buf = [UInt32](repeating: 0, count: pixelCount)
+            guard TIFFReadRGBATile(tiff, tileX, tileY, &buf) > 0 else { return nil }
+            return tjCompress(buf, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
+        } else {
+            let bufSize = pixelCount * tileTrait.pixelBytes
+            var buf = [UInt8](repeating: 0, count: bufSize)
+            let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
+            return Array(buf[..<tileSize])
+        }
     }
 
     private func importDirectories() {
@@ -166,6 +164,7 @@ final class OMETIFF : Slide {
     
     private func importLayers(from dir: UInt32) {
         layerDir = dir
+        layerDirOffset.append(nil) // The main directory offset is always nil.
 
         if let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
            let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH) {
@@ -189,6 +188,7 @@ final class OMETIFF : Slide {
             let offset = Array(UnsafeBufferPointer(start: ptr, count: Int(count))) // Need to copy, otherwise the pointer will be invalid after TIFFSetSubDirectory.
             for diroffset in offset {
                 guard TIFFSetSubDirectory(tiff, diroffset) == 1 else { break }
+                guard let _: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH) else { break } // The Lecia-1 has strip image in reduced-resolution layer
 
                 if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
                    let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH) {

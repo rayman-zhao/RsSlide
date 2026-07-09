@@ -34,6 +34,8 @@ struct SlideTests {
         ("CSP/WC.csp", "151A7101-2885-5B72-8138-F59051F9039B", "WC", "CSP", true, true, false),
         ("SVS/icc.svs", "2A8FA2CA-4B4C-501F-8AE1-1C2570D5BFC9", "icc", "SVS", true, true, false),
         ("秉理/G202601407AFP.svs", "7447E452-43A5-51E5-962A-0C11737CDDB5", "G202601407AFP", "SVS", true, true, false),
+        ("OMETIFF/microscope_ometiff.ome.tiff", "2c66263d-9b63-40a1-a11e-ebb787305fb9", "microscope_ometiff", "OME.TIFF", true, true, false),
+        ("OMETIFF/Leica-1.ome.tiff", "db30c0bc-b59a-425e-9e2c-bf9bb1dc2cb5", "Leica-1", "OME.TIFF", false, true, false),
     ])
     func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
@@ -160,7 +162,9 @@ func evalSlideMacroImage(_ s: Slide) throws {
 
 func evalSlideThumbnailImage(_ s: Slide) throws {
     let st = Date()
-    let jpg = s.fetchThumbnailJPEGImage(with: 512)!
+    let jpg = s.fetchThumbnailJPEGImage(with: 512)
+    #expect(jpg != nil)
+    guard let jpg else { return }
     let (w, h) = tjDecompressHeader(jpg)
     #expect(w <= 512 && h <= 512)
     let img = Data(jpg)
