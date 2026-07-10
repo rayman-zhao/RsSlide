@@ -24,6 +24,7 @@ struct SlidePreviewTests {
         ("CSP/sample.csp", false),
         ("OMETIFF/microscope_ometiff.ome.tiff", false),
         ("OMETIFF/Leica-1.ome.tiff", false),
+        ("QPTIFF/_20250228132506.qptiff", false),
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
@@ -53,5 +54,9 @@ struct SlidePreviewTests {
         print("Macro image consumed \(et.timeIntervalSince(st) * 1000) ms")
         #expect(img.isJPEG)
         print("Valid JPEG in \(img.count) bytes")
+
+        try! img.write(to: URL(filePath: "preview.jpg",
+                          directoryHint: .notDirectory,
+                          relativeTo: BASE))
     }
 }
