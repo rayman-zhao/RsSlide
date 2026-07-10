@@ -16,17 +16,19 @@ struct QPTIFFPreview : SlidePreview {
             TIFFClose(tiff)
         }
         
-        if let macro = TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1) {
+        let dirCount = TIFFNumberOfDirectories(tiff)
+        guard dirCount > 1 else { return nil }
+        if let macro = TIFFReadJPEGImage(tiff, dirCount - 1) {
             return macro
         }
         
         // Search for first strip image directory, which is usually the thumbnail image.
-        guard TIFFSetDirectory(tiff, 1) == 1 else { return nil }
-        repeat {
-            if let thumbnail = TIFFReadJPEGImage(tiff) {
+        for dirnum in 1..<(dirCount - 1) {
+            if let thumbnail = TIFFReadJPEGImage(tiff, dirnum) {
                 return thumbnail
             }
-        } while TIFFReadDirectory(tiff) == 1
+        }
+        
         return nil
     }
 }
