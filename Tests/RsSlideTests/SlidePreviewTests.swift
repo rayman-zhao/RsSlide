@@ -6,7 +6,7 @@ import RsSlide
 @Suite
 struct SlidePreviewTests {
    init() async {
-       await TIFFSetWarningHanlder { _, _ in }
+       await TIFFSetWarningHandler { _, _ in }
    }
 
     @Test(.serialized, arguments: [

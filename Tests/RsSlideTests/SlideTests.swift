@@ -8,7 +8,7 @@ import LibTIFF
 @Suite
 struct SlideTests {
     init() async {
-        await TIFFSetWarningHanlder { md, msg in
+        await TIFFSetWarningHandler { md, msg in
             // print("TIFFWarning: \(md) - \(msg)")
         }
     }

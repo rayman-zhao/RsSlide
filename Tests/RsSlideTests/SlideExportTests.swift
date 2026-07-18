@@ -8,10 +8,10 @@ import RsSlide
 @Suite
 struct ExportTests {
     init() async {
-        await TIFFSetWarningHanlder { md, msg in
+        await TIFFSetWarningHandler { md, msg in
             print("TIFFWarning: \(md) - \(msg)")
         }
-        await TIFFSetErrorHanlder { md, msg in
+        await TIFFSetErrorHandler { md, msg in
             print("TIFFError: \(md) - \(msg)")
         }
     }
