@@ -1,11 +1,11 @@
-import Foundation
-import WinSDK
-import RsFoundation
 import CVendorSDKs
+import Foundation
+import RsFoundation
+import WinSDK
 
-fileprivate let dll = libcsp_sdk()
+private let dll = libcsp_sdk()
 
-struct CSPPreview : SlidePreview {
+struct CSPPreview: SlidePreview {
     let path: URL
 
     func fetchMacroJPEGImage() -> [UInt8]? {
@@ -22,17 +22,17 @@ struct CSPPreview : SlidePreview {
     }
 }
 
-final class CSP : Slide {   
+final class CSP: Slide {
     let cspReader: UnsafeRawPointer
     var cspConfig = CspConfig()
     var cspScannerInfo = CspScannerInfo()
 
     lazy var id: Foundation.UUID = {
         let fingerprint = """
-        dataSize: \(dataSize)
-        cspConfig: \(cspConfig)
-        cspScannerInfo: \(cspScannerInfo)
-        """
+            dataSize: \(dataSize)
+            cspConfig: \(cspConfig)
+            cspScannerInfo: \(cspScannerInfo)
+            """
 
         return Data(fingerprint.utf8).hashUUID
     }()
@@ -55,7 +55,7 @@ final class CSP : Slide {
     lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
         fetchPixelData(at: layerTileSize.count - 1)
     }()
-    
+
     init?(path: URL) {
         guard let fp = dll.getCspReader?(path.filePath.oemCString) else { return nil }
         cspReader = fp
@@ -81,10 +81,11 @@ final class CSP : Slide {
         guard dll.cspGetLayerNum?(cspReader, &layerNum) == 0 && layerNum > 0 else { return nil }
         for _ in 0..<layerNum {
             layerImageSize.append((Int(imageWidth), Int(imageHeight)))
-            layerTileSize.append((
-                Int(ceil(imageHeight / Float(cspConfig.tileHeight))),
-                Int(ceil(imageWidth / Float(cspConfig.tileWidth)))
-            ))
+            layerTileSize.append(
+                (
+                    Int(ceil(imageHeight / Float(cspConfig.tileHeight))),
+                    Int(ceil(imageWidth / Float(cspConfig.tileWidth)))
+                ))
 
             imageWidth = ceil(imageWidth / cspConfig.downsamplingRatio)
             imageHeight = ceil(imageHeight / cspConfig.downsamplingRatio)
@@ -94,7 +95,7 @@ final class CSP : Slide {
     deinit {
         dll.destroyCspReader?(cspReader)
     }
-    
+
     func fetchLabelJPEGImage() -> [UInt8]? {
         var info = CspImageInfo()
         guard dll.cspReadLabel?(cspReader, &info) == 0 else { return nil }
@@ -104,7 +105,7 @@ final class CSP : Slide {
         memcpy(&pixels, info.data, Int(info.dataLen))
         return pixels
     }
-    
+
     func fetchMacroJPEGImage() -> [UInt8]? {
         var info = CspImageInfo()
         guard dll.cspReadPreview?(cspReader, &info) == 0 else { return nil }
@@ -129,7 +130,7 @@ final class CSP : Slide {
     }
 }
 
-fileprivate final class libcsp_sdk: @unchecked Sendable {
+private final class libcsp_sdk: @unchecked Sendable {
     private let dll = DllLoader("libcsp_sdk", "csp")
 
     let getCspReader: (@convention(c) (UnsafePointer<CChar>?) -> UnsafeRawPointer)?
@@ -141,7 +142,7 @@ fileprivate final class libcsp_sdk: @unchecked Sendable {
     let cspReadConfig: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspConfig>) -> Int32)?
     let cspGetLayerNum: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<UInt32>) -> Int32)?
     let cspReadImg: (@convention(c) (UnsafeRawPointer, Float, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
-    
+
     init() {
         getCspReader = dll.getProc("GetCspReader")
         destroyCspReader = dll.getProc("DestroyCspReader")

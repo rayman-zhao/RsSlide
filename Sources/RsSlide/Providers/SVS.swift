@@ -1,28 +1,28 @@
 import Foundation
-import LibTIFF
 import LibJPEGTurbo
+import LibTIFF
 import LittleCMS
 import RsFoundation
 
-struct SVSPreview : SlidePreview {
+struct SVSPreview: SlidePreview {
     let path: URL
 
     func fetchMacroJPEGImage() -> [UInt8]? {
-    #if os(Windows)
-        let tiff = TIFFOpenW(path.path.wideString, "rh")
-    #else
-        let tiff = TIFFOpen(path.path, "rh")
-    #endif
+        #if os(Windows)
+            let tiff = TIFFOpenW(path.path.wideString, "rh")
+        #else
+            let tiff = TIFFOpen(path.path, "rh")
+        #endif
         guard tiff != nil else { return nil }
         defer {
             TIFFClose(tiff)
         }
-        
+
         return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1) ?? TIFFReadJPEGImage(tiff, 1)
     }
 }
 
-final class SVS : Slide {
+final class SVS: Slide {
     let tiff: OpaquePointer
     var layerDir: [UInt32] = []
     var tilePhotometric = 0
@@ -32,13 +32,13 @@ final class SVS : Slide {
     var quality = 85
     var gamma: Double? = nil
     var cmsTransform: cmsHTRANSFORM? = nil
-    
+
     lazy var id: UUID = {
         let fingerprint = """
-        dataSize: \(dataSize)
-        imageDesc: \(imageDesc)
-        layers: \(layerImageSize)
-        """
+            dataSize: \(dataSize)
+            imageDesc: \(imageDesc)
+            layers: \(layerImageSize)
+            """
 
         return Data(fingerprint.utf8).hashUUID
     }()
@@ -61,15 +61,15 @@ final class SVS : Slide {
     lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
         fetchPixelData(at: layerTileSize.count - 1)
     }()
-    
+
     init?(path: URL) {
-    #if os(Windows)
-        guard let tiff = TIFFOpenW(path.path.wideString, "rh") else { return nil }
-    #else
-        guard let tiff = TIFFOpen(path.path, "rh") else { return nil } // h - Read TIFF header only, do not load the first directory.
-    #endif
+        #if os(Windows)
+            guard let tiff = TIFFOpenW(path.path.wideString, "rh") else { return nil }
+        #else
+            guard let tiff = TIFFOpen(path.path, "rh") else { return nil }  // h - Read TIFF header only, do not load the first directory.
+        #endif
         self.tiff = tiff
-        
+
         mainPath = path.path
         let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
         createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
@@ -77,28 +77,28 @@ final class SVS : Slide {
         name = path.deletingPathExtension().lastPathComponent
         format = path.pathExtension.uppercased()
         dataSize = path.fileSize
-        
+
         importDirectories()
-        
+
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
             //layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
-    
+
     deinit {
         TIFFClose(tiff)
         if let cmsTransform {
             cmsDeleteTransform(cmsTransform)
         }
     }
-    
+
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
         return TIFFReadJPEGImage(tiff, labelDir)
     }
-    
+
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
         return TIFFReadJPEGImage(tiff, macroDir)
@@ -118,7 +118,7 @@ final class SVS : Slide {
 
             var buf2 = [UInt32](repeating: 0, count: bufSize)
             cmsDoTransform(cmsTransform, buf, &buf2, cmsUInt32Number(bufSize))
-            
+
             let jpg = tjCompress(buf2, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
             return jpg
         }
@@ -138,24 +138,24 @@ final class SVS : Slide {
     }
 
     private func importDirectories() {
-    #if os(macOS)
-        let bufSize = 128 * 1024
-        var buf = [UInt8](repeating: 0, count: bufSize)
-        // TODO: var span = buf.mutableSpan
-        let fp = fmemopen(&buf, bufSize, "w")
-        defer { fclose(fp) }
-    #endif
+        #if os(macOS)
+            let bufSize = 128 * 1024
+            var buf = [UInt8](repeating: 0, count: bufSize)
+            // TODO: var span = buf.mutableSpan
+            let fp = fmemopen(&buf, bufSize, "w")
+            defer { fclose(fp) }
+        #endif
 
-        while (TIFFReadDirectory(tiff) == 1) {
+        while TIFFReadDirectory(tiff) == 1 {
             let dir = TIFFCurrentDirectory(tiff)
             // KFBio's tif messed up the Subfile Type, have to use tile size to help.
             //let reduced: UInt32? = TIFFGetField(tiff, TIFFTAG_SUBFILETYPE)
             let tw: UInt32? = TIFFGetField(tiff, TIFFTAG_TILEWIDTH)
-            
-            if dir == 0 && tw != nil { // First directory always be bottom layer image.
+
+            if dir == 0 && tw != nil {  // First directory always be bottom layer image.
                 importMetadata(from: dir)
                 importLayer(from: dir)
-            } else if tw != nil { // Sequential reduced layer image.
+            } else if tw != nil {  // Sequential reduced layer image.
                 importLayer(from: dir)
             } else if dir == 1 {
                 // Ignore second non-reduced directory, should be thumbnail image.
@@ -163,74 +163,80 @@ final class SVS : Slide {
                 labelDir = dir
             } else if macroDir == 0, let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION), String(cString: desc).lowercased().contains("macro") {
                 macroDir = dir
-            } else if labelDir == 0 && TIFFLastDirectory(tiff) == 0 { // Second last directory, should be label image.
+            } else if labelDir == 0 && TIFFLastDirectory(tiff) == 0 {  // Second last directory, should be label image.
                 labelDir = dir
-            } else if macroDir == 0 && TIFFLastDirectory(tiff) == 1 { // Last directory, should be macro image.
+            } else if macroDir == 0 && TIFFLastDirectory(tiff) == 1 {  // Last directory, should be macro image.
                 macroDir = dir
             }
-            
-        #if os(macOS)
-            fputs("Directory \(dir)\n", fp)
-            TIFFPrintDirectory(tiff, fp, 0)
-        #endif
+
+            #if os(macOS)
+                fputs("Directory \(dir)\n", fp)
+                TIFFPrintDirectory(tiff, fp, 0)
+            #endif
         }
-        
-    #if os(macOS)
-        fflush(fp)
-        log.info("\n\(String(decoding: buf, as: UTF8.self))")
-    #endif
+
+        #if os(macOS)
+            fflush(fp)
+            log.info("\n\(String(decoding: buf, as: UTF8.self))")
+        #endif
     }
-    
+
     private func importMetadata(from dir: UInt32) {
         if let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
-           let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH) {
+            let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
+        {
             tileTrait = TileTrait(width: Int(tw), height: Int(th))
         }
         if let photometric: UInt16 = TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC) {
             tilePhotometric = Int(photometric)
         }
-        
-        if let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION) { // libtiff keep this const char * memory
+
+        if let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION) {  // libtiff keep this const char * memory
             imageDesc = String(cString: desc)
-            
+
             let scn = Scanner(string: String(cString: desc))
-            
+
             if scn.scanUpToString("AppMag") != nil,
-               scn.scanString("AppMag") != nil,
-               scn.scanString("=") != nil,
-               let v = scn.scanInt() {
+                scn.scanString("AppMag") != nil,
+                scn.scanString("=") != nil,
+                let v = scn.scanInt()
+            {
                 scanObjective = v
             }
-            
+
             scn.currentIndex = scn.string.startIndex
             if scn.scanUpToString("MPP") != nil,
-               scn.scanString("MPP") != nil,
-               scn.scanString("=") != nil,
-               let v = scn.scanDouble() {
+                scn.scanString("MPP") != nil,
+                scn.scanString("=") != nil,
+                let v = scn.scanDouble()
+            {
                 scanScale = v
             }
 
             scn.currentIndex = scn.string.startIndex
             if scn.scanUpToString("Q") != nil,
-               scn.scanString("Q") != nil,
-               scn.scanString("=") != nil,
-               let v = scn.scanInt() {
+                scn.scanString("Q") != nil,
+                scn.scanString("=") != nil,
+                let v = scn.scanInt()
+            {
                 quality = v
             }
 
             scn.currentIndex = scn.string.startIndex
             if scn.scanUpToString("Gamma") != nil,
-               scn.scanString("Gamma") != nil,
-               scn.scanString("=") != nil,
-               let v = scn.scanDouble() {
+                scn.scanString("Gamma") != nil,
+                scn.scanString("=") != nil,
+                let v = scn.scanDouble()
+            {
                 gamma = v
             }
         }
 
         let icc: (count: UInt32?, data: UnsafeMutableRawPointer?) = TIFFGetField(tiff, TIFFTAG_ICCPROFILE)
         if let iccCount = icc.count,
-           let iccData = icc.data,
-           let iccProfile = cmsOpenProfileFromMem(iccData, iccCount) {
+            let iccData = icc.data,
+            let iccProfile = cmsOpenProfileFromMem(iccData, iccCount)
+        {
             defer { cmsCloseProfile(iccProfile) }
 
             if cmsGetColorSpace(iccProfile) == cmsSigRgbData {
@@ -242,18 +248,18 @@ final class SVS : Slide {
                 log.warning("ICC profile color space is not RGB, ignored")
             }
         }
-       
+
         if scanScale == 0.0,
-           let res: Float = TIFFGetField(tiff, TIFFTAG_XRESOLUTION),
-           let unit: UInt16 = TIFFGetField(tiff, TIFFTAG_RESOLUTIONUNIT) {
-            if (unit == RESUNIT_CENTIMETER) {
+            let res: Float = TIFFGetField(tiff, TIFFTAG_XRESOLUTION),
+            let unit: UInt16 = TIFFGetField(tiff, TIFFTAG_RESOLUTIONUNIT)
+        {
+            if unit == RESUNIT_CENTIMETER {
                 scanScale = Double(1 / res * 10 * 1000)
-            }
-            else if (unit == RESUNIT_INCH) {
+            } else if unit == RESUNIT_INCH {
                 scanScale = Double(1 / res * 25.4 * 1000)
             }
         }
-        
+
         if scanObjective == 0 {
             switch scanScale {
             case 0.15...0.35:
@@ -267,16 +273,18 @@ final class SVS : Slide {
             }
         }
     }
-    
+
     private func importLayer(from dir: UInt32) {
         if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
-           let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH) {
+            let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
+        {
             layerDir.append(dir)
             layerImageSize.append((Int(w), Int(h)))
-            layerTileSize.append((
-                Int(ceil(Double(h) / Double(tileTrait.size.h))),
-                Int(ceil(Double(w) / Double(tileTrait.size.w)))
-            ))
+            layerTileSize.append(
+                (
+                    Int(ceil(Double(h) / Double(tileTrait.size.h))),
+                    Int(ceil(Double(w) / Double(tileTrait.size.w)))
+                ))
         }
-    }    
+    }
 }
