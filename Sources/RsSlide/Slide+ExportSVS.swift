@@ -1,15 +1,15 @@
 import Foundation
-import LibTIFF
 import LibJPEGTurbo
+import LibTIFF
 import RsFoundation
 
 extension Slide {
     func saveAsSVS(to url: URL) throws {
-    #if os(Windows)
-        let tiff = TIFFOpenW(url.filePath.wideString, "w")
-    #else
-        let tiff = TIFFOpen(url.filePath, "w")
-    #endif
+        #if os(Windows)
+            let tiff = TIFFOpenW(url.filePath.wideString, "w")
+        #else
+            let tiff = TIFFOpen(url.filePath, "w")
+        #endif
         guard let tiff else { throw SlideExportError.failedCreateSVSFile(url: url) }
         defer {
             TIFFClose(tiff)
@@ -17,7 +17,8 @@ extension Slide {
 
         let tileWidth = UInt32(tileTrait.size.w)
         let tileHeight = UInt32(tileTrait.size.h)
-        let res = Float(1.0 / scanScale * 1000 * 10);
+        let res = Float(1.0 / scanScale * 1000 * 10)
+
         for layer in layerImageSize.enumerated() {
             let index = layer.offset
             let width = layer.element.w
@@ -35,7 +36,7 @@ extension Slide {
                     _ = TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, ptr)
                 }
             } else {
-                _ = TIFFSetField(tiff, TIFFTAG_SUBFILETYPE, UInt32(FILETYPE_REDUCEDIMAGE));
+                _ = TIFFSetField(tiff, TIFFTAG_SUBFILETYPE, UInt32(FILETYPE_REDUCEDIMAGE))
             }
 
             _ = TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, UInt32(width))
@@ -49,7 +50,7 @@ extension Slide {
             _ = TIFFSetField(tiff, TIFFTAG_TILEWIDTH, UInt32(tileWidth))
             _ = TIFFSetField(tiff, TIFFTAG_TILELENGTH, UInt32(tileHeight))
             _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_JPEG))
-                //TIFFSetField(tiff, TIFFTAG_JPEGQUALITY, 75);
+            //TIFFSetField(tiff, TIFFTAG_JPEGQUALITY, 75);
 
             var firstTile = true
             for row in 0..<rows {
@@ -98,9 +99,11 @@ extension Slide {
             let width = UInt32(tj3Get(tj, TJPARAM_JPEGWIDTH.rawValue))
             let height = UInt32(tj3Get(tj, TJPARAM_JPEGHEIGHT.rawValue))
 
-            _ = TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, width);
-            _ = TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, height);
-            _ = TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, height);
+            _ = TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, width)
+
+            _ = TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, height)
+
+            _ = TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, height)
 
             if let name {
                 let desc = "\(name) \(width)x\(height)"
@@ -109,10 +112,14 @@ extension Slide {
                 }
             }
 
-            _ = TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, UInt16(8));
-            _ = TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, UInt16(3));
-            _ = TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, UInt16(PLANARCONFIG_CONTIG));
-            _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_JPEG));
+            _ = TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, UInt16(8))
+
+            _ = TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, UInt16(3))
+
+            _ = TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, UInt16(PLANARCONFIG_CONTIG))
+
+            _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_JPEG))
+
             _ = tiffSetPhotometric(tiff, tj3Get(tj, TJPARAM_COLORSPACE.rawValue))
             _ = tiffSetSubsampling(tiff, tj3Get(tj, TJPARAM_SUBSAMP.rawValue))
         }

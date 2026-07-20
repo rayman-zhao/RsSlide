@@ -14,7 +14,7 @@ extension Slide {
 
         if 0..<layerTileSize.count ~= coord.layer {
             let rows = layerTileSize[coord.layer].r
-            let cols =  layerTileSize[coord.layer].c
+            let cols = layerTileSize[coord.layer].c
             guard 0..<rows ~= coord.row && 0..<cols ~= coord.col else { return .invalid }
             guard rows - 1 == coord.row || cols - 1 == coord.col else { return .valid(trimming: false) }
 
@@ -73,7 +73,7 @@ extension Slide {
                     let srcRow = (virtualTileY + y) * scale * srcPitch
                     for x in 0..<virtualTileWidth {
                         let srcOffset = srcRow + (virtualTileX + x) * scale * pixelBytes
-                        
+
                         memcpy(&pixels[dstOffset], srcBase + srcOffset, pixelBytes)
                         dstOffset += pixelBytes
                     }

@@ -7,7 +7,7 @@ public struct TileCoordinate {
     let col: Int
     let tier: Int
     let channel: Int
-    
+
     public init(layer: Int, row: Int, col: Int) {
         self.layer = layer
         self.row = row
@@ -41,13 +41,13 @@ public struct TileTrait: CustomStringConvertible {
         case rgb = 3
         case gray = 1
     }
-    
+
     public let size: (w: Int, h: Int)
     public let compression: CompressionHint
     public let pixelFormat: PixelFormatHint
     public let sampleBits: Int
     public let rgbBackground: Int
-    
+
     public var description: String {
         switch (compression, pixelFormat, sampleBits) {
         case (.jpeg, .rgb, 8):
@@ -56,7 +56,7 @@ public struct TileTrait: CustomStringConvertible {
             fatalError()
         }
     }
-    
+
     public var maxBytes: Int {
         return size.h * pitchBytes
     }
@@ -77,12 +77,14 @@ public struct TileTrait: CustomStringConvertible {
             return TJPF_GRAY
         }
     }
-    
-    init(width: Int, height: Int,
-         compression: CompressionHint = .jpeg,
-         pixelFormat: PixelFormatHint = .rgb,
-         sampleBits: Int = 8,
-         rgbBackground: Int = 0xFFFFFF) {
+
+    init(
+        width: Int, height: Int,
+        compression: CompressionHint = .jpeg,
+        pixelFormat: PixelFormatHint = .rgb,
+        sampleBits: Int = 8,
+        rgbBackground: Int = 0xFFFFFF
+    ) {
         self.size = (width, height)
         self.compression = compression
         self.pixelFormat = pixelFormat

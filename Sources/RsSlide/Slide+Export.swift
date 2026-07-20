@@ -9,8 +9,8 @@ public enum SlideExportError: Error {
     case failedWriteSVSDirectory
 }
 
-public extension Slide {
-    func save(as url: URL) throws {
+extension Slide {
+    public func save(as url: URL) throws {
         let fn = url.lastPathComponent.lowercased()
         if fn.hasSuffix(".jpg") || fn.hasSuffix(".jpeg") {
             try saveAsJPEG(to: url)

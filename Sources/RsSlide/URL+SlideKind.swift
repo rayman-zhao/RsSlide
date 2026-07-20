@@ -22,8 +22,7 @@ public enum SlideTrait: Equatable {
 
     public static func == (lhs: SlideTrait, rhs: SlideTrait) -> Bool {
         switch (lhs, rhs) {
-        case
-            (.isSlide, .isSlide),
+        case (.isSlide, .isSlide),
             (.isMetadataFolder, .isMetadataFolder),
             (.isGenericFolder, .isGenericFolder),
             (.isGenericFile, .isGenericFile),
@@ -35,8 +34,8 @@ public enum SlideTrait: Equatable {
     }
 }
 
-public extension URL {
-    var slideTrait: SlideTrait {
+extension URL {
+    public var slideTrait: SlideTrait {
         guard self.isFileURL else {
             log.trace("Not support \(self)")
             return .notSupported
@@ -47,16 +46,16 @@ public extension URL {
             if name.hasSuffix(".dsmeta") {
                 return .isMetadataFolder
             }
-#if MORE_PROVIDERS_AVAILABLE
-            if let url = reachableChild(named: "1.mds") {
-                log.trace("Found 1.mds in \(url.path)")
-                return .isSlide(SlideProvider({ MDSPreview(path: url) }, { MDS(path: url) }))
-            }
-            if let url = reachableChild(named: "1.mdsx") {
-                log.trace("Found 1.mdsx in \(url.path)")
-                return .isSlide(SlideProvider({ VMSDKPreview(path: url) }, { VMSDK(path: url) }))
-            }
-#endif
+            #if MORE_PROVIDERS_AVAILABLE
+                if let url = reachableChild(named: "1.mds") {
+                    log.trace("Found 1.mds in \(url.path)")
+                    return .isSlide(SlideProvider({ MDSPreview(path: url) }, { MDS(path: url) }))
+                }
+                if let url = reachableChild(named: "1.mdsx") {
+                    log.trace("Found 1.mdsx in \(url.path)")
+                    return .isSlide(SlideProvider({ VMSDKPreview(path: url) }, { VMSDK(path: url) }))
+                }
+            #endif
 
             return .isGenericFolder
         }
@@ -73,14 +72,14 @@ public extension URL {
         if name.hasSuffix(".qptiff") {
             return .isSlide(SlideProvider({ QPTIFFPreview(path: self) }, { QPTIFF(path: self) }))
         }
-#if MORE_PROVIDERS_AVAILABLE
-        if name.hasSuffix(".mds") {
-            return .isSlide(SlideProvider({ MDSPreview(path: self) }, { MDS(path: self) }))
-        }
-        if name.hasSuffix(".mdsx") || name.hasSuffix(".mdss") {
-            return .isSlide(SlideProvider({ VMSDKPreview(path: self) }, { VMSDK(path: self) }))
-        }
-#endif      
+        #if MORE_PROVIDERS_AVAILABLE
+            if name.hasSuffix(".mds") {
+                return .isSlide(SlideProvider({ MDSPreview(path: self) }, { MDS(path: self) }))
+            }
+            if name.hasSuffix(".mdsx") || name.hasSuffix(".mdss") {
+                return .isSlide(SlideProvider({ VMSDKPreview(path: self) }, { VMSDK(path: self) }))
+            }
+        #endif
 
         log.trace("Not slide \(self.path)")
         return .isGenericFile
