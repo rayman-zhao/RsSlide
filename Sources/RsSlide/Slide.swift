@@ -8,25 +8,11 @@ public struct TileCoordinate {
     let tier: Int
     let channel: Int
 
-    public init(layer: Int, row: Int, col: Int) {
-        self.layer = layer
-        self.row = row
-        self.col = col
-        self.tier = 0
-        self.channel = 0
-    }
-    public init(layer: Int, row: Int, col: Int, tier: Int) {
+    public init(layer: Int, row: Int, col: Int, tier: Int = 0, channel: Int = 0) {
         self.layer = layer
         self.row = row
         self.col = col
         self.tier = tier
-        self.channel = 0
-    }
-    public init(layer: Int, row: Int, col: Int, channel: Int) {
-        self.layer = layer
-        self.row = row
-        self.col = col
-        self.tier = 0
         self.channel = channel
     }
 }
@@ -46,7 +32,7 @@ public struct TileTrait: CustomStringConvertible {
     public let compression: CompressionHint
     public let pixelFormat: PixelFormatHint
     public let sampleBits: Int
-    public let rgbBackground: Int
+    public let backgroundColorRGB: Int
 
     public var description: String {
         switch (compression, pixelFormat, sampleBits) {
@@ -83,14 +69,23 @@ public struct TileTrait: CustomStringConvertible {
         compression: CompressionHint = .jpeg,
         pixelFormat: PixelFormatHint = .rgb,
         sampleBits: Int = 8,
-        rgbBackground: Int = 0xFFFFFF
+        backgroundColorRGB: Int = 0xFFFFFF
     ) {
         self.size = (width, height)
         self.compression = compression
         self.pixelFormat = pixelFormat
         self.sampleBits = sampleBits
-        self.rgbBackground = rgbBackground
+        self.backgroundColorRGB = backgroundColorRGB
     }
+}
+
+/// Pixel data of a slide layer, decompressed and packed row by row.
+public struct LayerPixelData {
+    public let pixels: [UInt8]
+    public let layer: Int
+    public let width: Int
+    public let pitch: Int
+    public let height: Int
 }
 
 public protocol Slide {
@@ -105,17 +100,21 @@ public protocol Slide {
     var scanScale: Double { get }
     var tileTrait: TileTrait { get }
     var layerZoom: Int { get }
-    var extendXMLString: String { get }
+    var extendedXML: String { get }
 
     var layerImageSize: [(w: Int, h: Int)] { get }
     var layerTileSize: [(r: Int, c: Int)] { get }
     var tierCount: Int { get }
     var tierSpacing: Double { get }
 
-    // Each provider has to implement this storage property for generate once
-    var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? { get }
+    /// Cached pixel data of the base (smallest) layer, generated once per provider.
+    ///
+    /// - Important: This is an implementation detail used internally by
+    ///   `fetchVirtualTileImage`, `fetchThumbnailJPEGImage`, and `saveAsSVS`.
+    ///   Do not access directly; treat it as if it were `internal`.
+    var topLayerPixelData: LayerPixelData? { get }
 
     func fetchLabelJPEGImage() -> [UInt8]?
     func fetchMacroJPEGImage() -> [UInt8]?
-    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]?
+    func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]?
 }

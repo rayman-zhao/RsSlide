@@ -48,11 +48,11 @@ final class CSP: Slide {
     let tierSpacing: Double = 0.0
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
-    let extendXMLString: String = ""
+    let extendedXML: String = ""
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
+    lazy var topLayerPixelData = {
         fetchPixelData(at: layerTileSize.count - 1)
     }()
 
@@ -116,7 +116,7 @@ final class CSP: Slide {
         return pixels
     }
 
-    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
+    func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
         let scale = Float(Double(scanObjective) / pow(Double(layerZoom), Double(coord.layer)))
         let tw = UInt32(tileTrait.size.w)
         let th = UInt32(tileTrait.size.h)
@@ -131,7 +131,7 @@ final class CSP: Slide {
 }
 
 private final class libcsp_sdk: @unchecked Sendable {
-    private let dll = DllLoader("libcsp_sdk", "csp")
+    private let dll = DLLLoader("libcsp_sdk", "csp")
 
     let getCspReader: (@convention(c) (UnsafePointer<CChar>?) -> UnsafeRawPointer)?
     let destroyCspReader: (@convention(c) (UnsafeRawPointer) -> Void)?

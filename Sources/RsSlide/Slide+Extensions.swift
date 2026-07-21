@@ -2,14 +2,14 @@ import Foundation
 import LibJPEGTurbo
 import RsFoundation
 
-enum TileCoordinateTrait {
+enum TileCoordinateValidation {
     case valid(trimming: Bool)
     case virtual
     case invalid
 }
 
 extension Slide {
-    func validate(coord: TileCoordinate) -> TileCoordinateTrait {
+    func validate(coord: TileCoordinate) -> TileCoordinateValidation {
         guard 0..<tierCount ~= coord.tier else { return .invalid }
 
         if 0..<layerTileSize.count ~= coord.layer {
@@ -30,14 +30,14 @@ extension Slide {
         }
     }
 
-    func fetchTrimmedTileImage(at coord: TileCoordinate) -> [UInt8]? {
+    func fetchTrimmedTileImage(for coord: TileCoordinate) -> [UInt8]? {
         guard let pxdata = fetchPixelData(from: coord, to: coord) else { return nil }
 
         return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
     }
 
-    func fetchVirtualTileImage(at coord: TileCoordinate) -> [UInt8]? {
-        guard let from = baseLayerPixelData else { return nil }
+    func fetchVirtualTileImage(for coord: TileCoordinate) -> [UInt8]? {
+        guard let from = topLayerPixelData else { return nil }
         guard coord.layer >= from.layer else { return nil }
 
         let scale = Int(pow(Double(layerZoom), Double(coord.layer - from.layer)))
@@ -84,9 +84,9 @@ extension Slide {
         return tjCompress(pixels, tileTrait.tjPF, virtualTileWidth, virtualTileHeight)
     }
 
-    func trimPixelData(from: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)) -> (pixels: [UInt8], layer: Int, width: Int, height: Int) {
+    func trimPixelData(from: LayerPixelData) -> LayerPixelData {
         let rowBytes = from.width * tileTrait.pixelBytes
-        guard rowBytes != from.pitch else { return (from.pixels, from.layer, from.width, from.height) }
+        guard rowBytes != from.pitch else { return from }
 
         var trimmed = [UInt8](repeating: 0, count: from.height * rowBytes)
         from.pixels.withUnsafeBytes { srcBuf in
@@ -95,10 +95,10 @@ extension Slide {
             }
         }
 
-        return (trimmed, from.layer, from.width, from.height)
+        return LayerPixelData(pixels: trimmed, layer: from.layer, width: from.width, pitch: rowBytes, height: from.height)
     }
 
-    func fetchPixelData(at layer: Int) -> (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? {
+    func fetchPixelData(at layer: Int) -> LayerPixelData? {
         guard 0..<layerImageSize.count ~= layer else { return nil }
 
         let from = TileCoordinate(layer: layer, row: 0, col: 0)
@@ -106,7 +106,7 @@ extension Slide {
         return fetchPixelData(from: from, to: to)
     }
 
-    func fetchPixelData(from: TileCoordinate, to: TileCoordinate) -> (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? {
+    func fetchPixelData(from: TileCoordinate, to: TileCoordinate) -> LayerPixelData? {
         guard case .valid = validate(coord: from), case .valid = validate(coord: to) else { return nil }
         let pixelLayer = from.layer
         guard pixelLayer == to.layer else { return nil }
@@ -141,7 +141,7 @@ extension Slide {
         for row in from.row...to.row {
             for col in from.col...to.col {
                 let coord = TileCoordinate(layer: pixelLayer, row: row, col: col)
-                guard let img = fetchTileRawImage(at: coord) else { continue }
+                guard let img = fetchTileRawImage(for: coord) else { continue }
 
                 tj3Decompress8(
                     tj,
@@ -154,6 +154,6 @@ extension Slide {
             }
         }
 
-        return (pixels, pixelLayer, width, pitch, height)
+        return LayerPixelData(pixels: pixels, layer: pixelLayer, width: width, pitch: pitch, height: height)
     }
 }

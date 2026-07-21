@@ -27,7 +27,7 @@ struct SlidePreviewTests {
         ("QPTIFF/_20250228132506.qptiff", false),
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
-        let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
+        let trait = URL(filePath: fn, relativeTo: BASE).slideKind
         if more && (trait == .isGenericFile || trait == .isGenericFolder) {
             return
         }
@@ -37,7 +37,7 @@ struct SlidePreviewTests {
         evalSlidePreviewMacroImage(sp)
     }
 
-    func evalMakeSlidePreview(fromTrait trait: SlideTrait) -> SlidePreview {
+    func evalMakeSlidePreview(fromTrait trait: SlideKind) -> SlidePreview {
         guard case .isSlide(let builder) = trait else { fatalError() }
 
         let st = Date()

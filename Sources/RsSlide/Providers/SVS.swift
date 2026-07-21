@@ -54,11 +54,11 @@ final class SVS: Slide {
     let tierSpacing: Double = 0.0
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
-    let extendXMLString: String = ""
+    let extendedXML: String = ""
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var baseLayerPixelData: (pixels: [UInt8], layer: Int, width: Int, pitch: Int, height: Int)? = {
+    lazy var topLayerPixelData = {
         fetchPixelData(at: layerTileSize.count - 1)
     }()
 
@@ -104,7 +104,7 @@ final class SVS: Slide {
         return TIFFReadJPEGImage(tiff, macroDir)
     }
 
-    func fetchTileRawImage(at coord: TileCoordinate) -> [UInt8]? {
+    func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
         guard case .valid = validate(coord: coord) else { return nil }
         guard TIFFSetDirectory(tiff, layerDir[coord.layer]) else { return nil }
 

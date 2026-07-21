@@ -29,9 +29,9 @@ struct TraitTests {
         } else {
             url = URL(filePath: fn, relativeTo: BASE)
         }
-        let trait = try #require(url).slideTrait
+        let trait = try #require(url).slideKind
 
-        switch st { // SlideTrait no need to be sendable only for parameter-testing.
+        switch st { // SlideKind no need to be sendable only for parameter-testing.
         case "notSupported":
             #expect(trait == .notSupported)
         case "isSlide":
@@ -65,7 +65,7 @@ struct TraitTests {
         var slides: [String] = []
          
         while let file = enumerator.nextObject() as? URL {
-            switch file.slideTrait{
+            switch file.slideKind{
             case .isSlide:
                 if file.hasDirectoryPath {
                     slides.append("*\(file.lastPathComponent)")

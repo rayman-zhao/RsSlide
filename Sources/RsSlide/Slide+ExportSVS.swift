@@ -56,7 +56,7 @@ extension Slide {
             for row in 0..<rows {
                 for col in 0..<cols {
                     let coord = TileCoordinate(layer: index, row: row, col: col)
-                    guard var tileRawImage = fetchTileRawImage(at: coord) else { continue }
+                    guard var tileRawImage = fetchTileRawImage(for: coord) else { continue }
 
                     if firstTile {
                         firstTile = false
@@ -79,14 +79,18 @@ extension Slide {
             guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedWriteSVSDirectory }
 
             if index == 0 {
-                try writeImageDirectory(tiff, fetchThumbnailJPEGImage())
+                try writeImageDirectory(tiff, jpeg: fetchThumbnailJPEGImage())
             }
         }
-        try writeImageDirectory(tiff, fetchLabelJPEGImage(), "Aperio\nlabel")
-        try writeImageDirectory(tiff, fetchMacroJPEGImage(), "Aperio\nmacro")
+        try writeImageDirectory(tiff, jpeg: fetchLabelJPEGImage(), name: "Aperio\nlabel")
+        try writeImageDirectory(tiff, jpeg: fetchMacroJPEGImage(), name: "Aperio\nmacro")
     }
 
-    private func writeImageDirectory(_ tiff: OpaquePointer, _ jpeg: [UInt8]?, _ name: String? = nil) throws {
+    private func writeImageDirectory(
+        _ tiff: OpaquePointer,
+        jpeg: [UInt8]?,
+        name: String? = nil
+    ) throws {
         guard var jpeg = jpeg else {
             log.info("No JPEG image to write for description: \(name ?? "thumbnail")")
             return

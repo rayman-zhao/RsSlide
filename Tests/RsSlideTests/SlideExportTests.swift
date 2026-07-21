@@ -20,10 +20,10 @@ struct ExportTests {
     func exportJPEG() throws {
         let fn = "MDSX/slide.mdsx"
 
-        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideTrait else {
+        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
             fatalError("Invalid slide trait for \(fn)")
         }
-        guard let s = builder.makeView() else {
+        guard let s = builder.makeSlide() else {
             fatalError("Failed to create slide view for \(fn)")
         }
 
@@ -31,7 +31,7 @@ struct ExportTests {
         print("Exporting to \(url.filePath)")
 
         let st = Date()
-        try s.save(as: url)
+        try s.save(to: url)
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
@@ -47,10 +47,10 @@ struct ExportTests {
     func exportSVS() async throws {
         let fn = "MDSX/slide.mdsx"
 
-        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideTrait else {
+        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
             fatalError("Invalid slide trait for \(fn)")
         }
-        guard let s = builder.makeView() else {
+        guard let s = builder.makeSlide() else {
             fatalError("Failed to create slide view for \(fn)")
         }
 
@@ -58,15 +58,15 @@ struct ExportTests {
         print("Exporting to \(url.filePath)")
 
         let st = Date()
-        try s.save(as: url)
+        try s.save(to: url)
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
-        guard case .isSlide(let builder2) = url.slideTrait else {
+        guard case .isSlide(let builder2) = url.slideKind else {
             fatalError("Invalid slide trait for \(url)")
         }
 
-        guard let s2 = builder2.makeView() else {
+        guard let s2 = builder2.makeSlide() else {
             fatalError("Failed to create slide view for \(url)")
         }
 

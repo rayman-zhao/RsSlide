@@ -7,17 +7,17 @@ extension Slide {
     public func fetchTileImage(at coord: TileCoordinate) -> [UInt8]? {
         switch validate(coord: coord) {
         case .valid(trimming: false):
-            return fetchTileRawImage(at: coord)
+            return fetchTileRawImage(for: coord)
         case .valid(trimming: true):
-            return fetchTrimmedTileImage(at: coord)
+            return fetchTrimmedTileImage(for: coord)
         case .virtual:
-            return fetchVirtualTileImage(at: coord)
+            return fetchVirtualTileImage(for: coord)
         case .invalid:
             return nil
         }
     }
 
-    public func fetchThumbnailJPEGImage(with maxSize: Int = 512) -> [UInt8]? {
+    public func fetchThumbnailJPEGImage(maxSize: Int = 512) -> [UInt8]? {
         guard
             tileTrait.pixelFormat == .rgb
                 && tileTrait.sampleBits == 8
@@ -34,7 +34,7 @@ extension Slide {
         }
 
         guard layer >= 0 else { return nil }
-        guard let pxdata = (layer == layerImageSize.count - 1) ? baseLayerPixelData : fetchPixelData(at: layer) else { return nil }
+        guard let pxdata = (layer == layerImageSize.count - 1) ? topLayerPixelData : fetchPixelData(at: layer) else { return nil }
 
         var thumbnailWidth = maxSize
         var thumbnailHeight = maxSize

@@ -2,7 +2,7 @@ import Foundation
 import RsFoundation
 import WinSDK
 
-final class DllLoader {
+final class DLLLoader {
     private let dll: HMODULE?
 
     init(_ name: String, _ folder: String) {

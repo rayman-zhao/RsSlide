@@ -38,7 +38,7 @@ struct SlideTests {
         ("OMETIFF/Leica-1.ome.tiff", "db30c0bc-b59a-425e-9e2c-bf9bb1dc2cb5", "Leica-1", "OME.TIFF", false, true, false),
     ])
     func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
-        let trait = URL(filePath: fn, relativeTo: BASE).slideTrait
+        let trait = URL(filePath: fn, relativeTo: BASE).slideKind
         if more && (trait == .isGenericFile || trait == .isGenericFolder) {
             return
         }
@@ -68,11 +68,11 @@ struct SlideTests {
     }
 }
 
-func evalMakeSlide(fromTrait trait: SlideTrait) -> Slide? {
+func evalMakeSlide(fromTrait trait: SlideKind) -> Slide? {
     guard case .isSlide(let builder) = trait else { fatalError() }
 
     let st = Date()
-    let s =  builder.makeView()
+    let s =  builder.makeSlide()
     let et = Date()
     print("Open consumed \(et.timeIntervalSince(st) * 1000) ms")
     return s
@@ -127,8 +127,8 @@ func evalSlideMetadata(_ s: Slide) async {
     #expect([2, 4].contains(s.layerZoom))
     print("Layer zoom \(s.layerZoom)")
 
-    if !s.extendXMLString.isEmpty {
-        let xml = try? XMLDocument(xmlString: s.extendXMLString)
+    if !s.extendedXML.isEmpty {
+        let xml = try? XMLDocument(xmlString: s.extendedXML)
         #expect(xml != nil)
         xml?.forEachElement { parent, name, attribute, value in
             print("\(parent)/\(name) - \(attribute) - \(value)")
@@ -162,7 +162,7 @@ func evalSlideMacroImage(_ s: Slide) throws {
 
 func evalSlideThumbnailImage(_ s: Slide) throws {
     let st = Date()
-    let jpg = s.fetchThumbnailJPEGImage(with: 512)
+    let jpg = s.fetchThumbnailJPEGImage(maxSize: 512)
     #expect(jpg != nil)
     guard let jpg else { return }
     let (w, h) = tjDecompressHeader(jpg)
