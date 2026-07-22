@@ -36,7 +36,7 @@ struct TraitTests {
             #expect(trait == .notSupported)
         case "isSlide":
             var isSlide = false
-            if case .isSlide(_) = trait {
+            if case .slide(_) = trait {
                 isSlide = true
             }
         #if MORE_PROVIDERS_AVAILABLE
@@ -45,11 +45,11 @@ struct TraitTests {
             #expect(more || isSlide)
         #endif
         case "isGenericFile":
-            #expect(trait == .isGenericFile)
+            #expect(trait == .genericFile)
         case "isMetadataFolder":
-            #expect(trait == .isMetadataFolder)
+            #expect(trait == .metadataFolder)
         case "isGenericFolder":
-            #expect(trait == .isGenericFolder)
+            #expect(trait == .genericFolder)
         default:
             fatalError()
         }
@@ -66,7 +66,7 @@ struct TraitTests {
          
         while let file = enumerator.nextObject() as? URL {
             switch file.slideKind{
-            case .isSlide:
+            case .slide:
                 if file.hasDirectoryPath {
                     slides.append("*\(file.lastPathComponent)")
                     enumerator.skipDescendants()
@@ -74,10 +74,10 @@ struct TraitTests {
                 else {
                     slides.append("#\(file.lastPathComponent)")
                 }
-            case .isMetadataFolder:
+            case .metadataFolder:
                 slides.append("-\(file.lastPathComponent)")
                 enumerator.skipDescendants()
-            case .isGenericFolder:
+            case .genericFolder:
                 slides.append(" \(file.path)")
             default:
                 break

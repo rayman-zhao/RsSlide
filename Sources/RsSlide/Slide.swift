@@ -18,21 +18,42 @@ public struct TileCoordinate {
 }
 
 public struct TileTrait: CustomStringConvertible {
-    public enum CompressionHint {
+    enum CompressionHint {
         case jpeg
         case png
         case jxl
     }
-    public enum PixelFormatHint: Int {
+    enum PixelFormatHint: Int {
         case rgb = 3
         case gray = 1
     }
 
-    public let size: (w: Int, h: Int)
-    public let compression: CompressionHint
-    public let pixelFormat: PixelFormatHint
-    public let sampleBits: Int
-    public let backgroundColorRGB: Int
+    let size: (w: Int, h: Int)
+    let compression: CompressionHint
+    let pixelFormat: PixelFormatHint
+    let sampleBits: Int
+    let backgroundColorRGB: Int
+
+    var maxBytes: Int {
+        return size.h * pitchBytes
+    }
+
+    var pixelBytes: Int {
+        return pixelFormat.rawValue * sampleBits / 8
+    }
+
+    var pitchBytes: Int {
+        return size.w * pixelBytes
+    }
+
+    var tjPF: TJPF {
+        switch pixelFormat {
+        case .rgb:
+            return TJPF_RGB
+        case .gray:
+            return TJPF_GRAY
+        }
+    }
 
     public var description: String {
         switch (compression, pixelFormat, sampleBits) {
@@ -40,27 +61,6 @@ public struct TileTrait: CustomStringConvertible {
             return "JPEG_RGB_24bits"
         default:
             fatalError()
-        }
-    }
-
-    public var maxBytes: Int {
-        return size.h * pitchBytes
-    }
-
-    public var pixelBytes: Int {
-        return pixelFormat.rawValue * sampleBits / 8
-    }
-
-    public var pitchBytes: Int {
-        return size.w * pixelBytes
-    }
-
-    public var tjPF: TJPF {
-        switch pixelFormat {
-        case .rgb:
-            return TJPF_RGB
-        case .gray:
-            return TJPF_GRAY
         }
     }
 
@@ -81,11 +81,11 @@ public struct TileTrait: CustomStringConvertible {
 
 /// Pixel data of a slide layer, decompressed and packed row by row.
 public struct LayerPixelData {
-    public let pixels: [UInt8]
-    public let layer: Int
-    public let width: Int
-    public let pitch: Int
-    public let height: Int
+    let pixels: [UInt8]
+    let layer: Int
+    let width: Int
+    let pitch: Int
+    let height: Int
 }
 
 public protocol Slide {
@@ -98,14 +98,14 @@ public protocol Slide {
     var dataSize: Int { get }
     var scanObjective: Int { get }
     var scanScale: Double { get }
+    var tierCount: Int { get }
+    var tierSpacing: Double { get }
     var tileTrait: TileTrait { get }
     var layerZoom: Int { get }
     var extendedXML: String { get }
 
     var layerImageSize: [(w: Int, h: Int)] { get }
     var layerTileSize: [(r: Int, c: Int)] { get }
-    var tierCount: Int { get }
-    var tierSpacing: Double { get }
 
     /// Cached pixel data of the base (smallest) layer, generated once per provider.
     ///

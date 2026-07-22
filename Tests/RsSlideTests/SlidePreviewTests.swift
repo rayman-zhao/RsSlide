@@ -28,7 +28,7 @@ struct SlidePreviewTests {
     ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
-        if more && (trait == .isGenericFile || trait == .isGenericFolder) {
+        if more && (trait == .genericFile || trait == .genericFolder) {
             return
         }
 
@@ -38,7 +38,7 @@ struct SlidePreviewTests {
     }
 
     func evalMakeSlidePreview(fromTrait trait: SlideKind) -> SlidePreview {
-        guard case .isSlide(let builder) = trait else { fatalError() }
+        guard case .slide(let builder) = trait else { fatalError() }
 
         let st = Date()
         let sp = builder.makePreview()

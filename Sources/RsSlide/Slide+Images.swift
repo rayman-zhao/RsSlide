@@ -4,8 +4,8 @@ import MBL
 import RsFoundation
 
 extension Slide {
-    public func fetchTileImage(at coord: TileCoordinate) -> [UInt8]? {
-        switch validate(coord: coord) {
+    public func fetchTileImage(for coord: TileCoordinate) -> [UInt8]? {
+        switch validate(coord) {
         case .valid(trimming: false):
             return fetchTileRawImage(for: coord)
         case .valid(trimming: true):
@@ -47,7 +47,7 @@ extension Slide {
         if (thumbnailWidth, thumbnailHeight) == (pxdata.width, pxdata.height) {
             return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
         } else {
-            let trimmed = trimPixelData(from: pxdata)
+            let trimmed = trimmedPixelData(from: pxdata)
             let thumbnail = scaleImage(trimmed.pixels, trimmed.width, trimmed.height, thumbnailWidth, thumbnailHeight)
             return tjCompress(thumbnail, tileTrait.tjPF, thumbnailWidth, thumbnailHeight)
         }

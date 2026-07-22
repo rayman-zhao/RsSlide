@@ -20,7 +20,7 @@ struct ExportTests {
     func exportJPEG() throws {
         let fn = "MDSX/slide.mdsx"
 
-        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
+        guard case .slide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
             fatalError("Invalid slide trait for \(fn)")
         }
         guard let s = builder.makeSlide() else {
@@ -47,7 +47,7 @@ struct ExportTests {
     func exportSVS() async throws {
         let fn = "MDSX/slide.mdsx"
 
-        guard case .isSlide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
+        guard case .slide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
             fatalError("Invalid slide trait for \(fn)")
         }
         guard let s = builder.makeSlide() else {
@@ -62,7 +62,7 @@ struct ExportTests {
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
-        guard case .isSlide(let builder2) = url.slideKind else {
+        guard case .slide(let builder2) = url.slideKind else {
             fatalError("Invalid slide trait for \(url)")
         }
 
@@ -85,7 +85,7 @@ struct ExportTests {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    guard let _ = s.fetchTileImage(at: coord) else { continue }
+                    guard let _ = s.fetchTileImage(for: coord) else { continue }
                     cnt += 1
                 }
             }

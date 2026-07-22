@@ -5,7 +5,7 @@ import WinSDK
 final class DLLLoader {
     private let dll: HMODULE?
 
-    init(_ name: String, _ folder: String) {
+    init(name: String, folder: String) {
         var path: String = name
         if let url = Bundle.main.url(forResource: name, withExtension: ".dll", subdirectory: "Ruslan_Ruslan.resources/CloudExec/lib/\(folder)") {  // For Ruslan project
             path = url.filePath

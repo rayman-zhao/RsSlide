@@ -9,19 +9,19 @@ enum TileCoordinateValidation {
 }
 
 extension Slide {
-    func validate(coord: TileCoordinate) -> TileCoordinateValidation {
-        guard 0..<tierCount ~= coord.tier else { return .invalid }
+    func validate(_ coordinate: TileCoordinate) -> TileCoordinateValidation {
+        guard 0..<tierCount ~= coordinate.tier else { return .invalid }
 
-        if 0..<layerTileSize.count ~= coord.layer {
-            let rows = layerTileSize[coord.layer].r
-            let cols = layerTileSize[coord.layer].c
-            guard 0..<rows ~= coord.row && 0..<cols ~= coord.col else { return .invalid }
-            guard rows - 1 == coord.row || cols - 1 == coord.col else { return .valid(trimming: false) }
+        if 0..<layerTileSize.count ~= coordinate.layer {
+            let rows = layerTileSize[coordinate.layer].r
+            let cols = layerTileSize[coordinate.layer].c
+            guard 0..<rows ~= coordinate.row && 0..<cols ~= coordinate.col else { return .invalid }
+            guard rows - 1 == coordinate.row || cols - 1 == coordinate.col else { return .valid(trimming: false) }
 
             let tileWidth = tileTrait.size.w
             let tileHeight = tileTrait.size.h
-            let trimmedWidth = layerImageSize[coord.layer].w - coord.col * tileWidth
-            let trimmedHeight = layerImageSize[coord.layer].h - coord.row * tileHeight
+            let trimmedWidth = layerImageSize[coordinate.layer].w - coordinate.col * tileWidth
+            let trimmedHeight = layerImageSize[coordinate.layer].h - coordinate.row * tileHeight
             guard trimmedWidth < tileWidth || trimmedHeight < tileHeight else { return .valid(trimming: false) }
 
             return .valid(trimming: true)
@@ -84,7 +84,7 @@ extension Slide {
         return tjCompress(pixels, tileTrait.tjPF, virtualTileWidth, virtualTileHeight)
     }
 
-    func trimPixelData(from: LayerPixelData) -> LayerPixelData {
+    func trimmedPixelData(from: LayerPixelData) -> LayerPixelData {
         let rowBytes = from.width * tileTrait.pixelBytes
         guard rowBytes != from.pitch else { return from }
 
@@ -107,7 +107,7 @@ extension Slide {
     }
 
     func fetchPixelData(from: TileCoordinate, to: TileCoordinate) -> LayerPixelData? {
-        guard case .valid = validate(coord: from), case .valid = validate(coord: to) else { return nil }
+        guard case .valid = validate(from), case .valid = validate(to) else { return nil }
         let pixelLayer = from.layer
         guard pixelLayer == to.layer else { return nil }
         guard from.row <= to.row && from.col <= to.col else { return nil }

@@ -39,7 +39,7 @@ struct SlideTests {
     ])
     func slideValid(_ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
-        if more && (trait == .isGenericFile || trait == .isGenericFolder) {
+        if more && (trait == .genericFile || trait == .genericFolder) {
             return
         }
 
@@ -69,7 +69,7 @@ struct SlideTests {
 }
 
 func evalMakeSlide(fromTrait trait: SlideKind) -> Slide? {
-    guard case .isSlide(let builder) = trait else { fatalError() }
+    guard case .slide(let builder) = trait else { fatalError() }
 
     let st = Date()
     let s =  builder.makeSlide()
@@ -78,7 +78,7 @@ func evalMakeSlide(fromTrait trait: SlideKind) -> Slide? {
     return s
 }
 
-actor ExstingId {
+actor ExistingId {
     private var all: Set<UUID> = []
 
     func insertNew(_ item: UUID) -> Int {
@@ -88,7 +88,7 @@ actor ExstingId {
     }
 }
 
-let allIds = ExstingId()
+let allIds = ExistingId()
 
 func evalSlideMetadata(_ s: Slide) async {
     #expect(await allIds.insertNew(s.id) == 1)
@@ -187,7 +187,7 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    guard let raw = s.fetchTileImage(at: coord) else {
+                    guard let raw = s.fetchTileImage(for: coord) else {
                         print("Tile at \(coord) is nil")
                         continue
                     }
@@ -205,7 +205,7 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
                     //         relativeTo: BASE))
                     // }
 
-                    if case .valid(trimming: true) = s.validate(coord: coord) {
+                    if case .valid(trimming: true) = s.validate(coord) {
                         let (w, h) = tjDecompressHeader(raw)
                         #expect(w < s.tileTrait.size.w || h < s.tileTrait.size.h)
                     }
@@ -242,7 +242,7 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     var cnt = 0 
     let st = Date()
     for coord in tiles {
-        guard let td = s.fetchTileImage(at: coord) else { continue }
+        guard let td = s.fetchTileImage(for: coord) else { continue }
         if Data(td).isImage{
             cnt += 1
             totalSize += td.count
@@ -281,7 +281,7 @@ func evalVirtualTiles(_ s: Slide) throws {
         for rw in 0..<(Int(ceil(Double(height) / tileH))) {
             for cl in 0..<(Int(ceil(Double(width) / tileW))) {
                 let coord = TileCoordinate(layer: layer, row: rw, col: cl)
-                guard let raw = s.fetchTileImage(at: coord) else {
+                guard let raw = s.fetchTileImage(for: coord) else {
                     missingCount += 1
                     continue
                 }

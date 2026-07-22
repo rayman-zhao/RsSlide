@@ -31,16 +31,16 @@ struct OMETIFFPreview: SlidePreview {
 }
 
 final class OMETIFF: Slide {
-    enum LayerData {
+    private enum LayerData {
         case tile(UInt32, UInt64?)
         case strip(UInt32, UInt64, [UInt32]?, UInt32, UInt32)
     }
 
-    let tiff: OpaquePointer
-    var layerData: [LayerData] = []
-    var tilePhotometric = 0
-    var labelDir: UInt32 = 0
-    let quality = 85
+    private let tiff: OpaquePointer
+    private var layerData: [LayerData] = []
+    private var tilePhotometric = 0
+    private var labelDir: UInt32 = 0
+    private let quality = 85
 
     var id: UUID = UUID()
     var mainPath: String
@@ -56,12 +56,11 @@ final class OMETIFF: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
+    
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var topLayerPixelData = {
-        fetchPixelData(at: layerTileSize.count - 1)
-    }()
+    lazy var topLayerPixelData = fetchPixelData(at: layerTileSize.count - 1)
 
     init?(path: URL) {
         #if os(Windows)
@@ -111,7 +110,7 @@ final class OMETIFF: Slide {
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
-        guard case .valid = validate(coord: coord) else { return nil }
+        guard case .valid = validate(coord) else { return nil }
 
         switch layerData[coord.layer] {
         case .tile(let dirnum, let diroffset):

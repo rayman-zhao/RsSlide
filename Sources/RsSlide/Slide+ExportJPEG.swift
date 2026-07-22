@@ -10,10 +10,10 @@ extension Slide {
                 break
             }
         }
-        guard let layer else { throw SlideExportError.tooBigImageToExportJPEG(w: layerImageSize.last?.w, h: layerImageSize.last?.h) }
-        guard let pxdata = fetchPixelData(at: layer) else { throw SlideExportError.noMemoryToFetchPixelData }
+        guard let layer else { throw SlideExportError.imageTooLargeForJPEG(width: layerImageSize.last?.w, height: layerImageSize.last?.h) }
+        guard let pxdata = fetchPixelData(at: layer) else { throw SlideExportError.insufficientMemoryForPixelData }
         let jpeg = tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
-        guard !jpeg.isEmpty else { throw SlideExportError.noMemoryToExportJPEG }
+        guard !jpeg.isEmpty else { throw SlideExportError.insufficientMemoryForJPEG }
 
         try Data(jpeg).write(to: url)
     }

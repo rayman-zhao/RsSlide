@@ -23,9 +23,9 @@ struct CSPPreview: SlidePreview {
 }
 
 final class CSP: Slide {
-    let cspReader: UnsafeRawPointer
-    var cspConfig = CspConfig()
-    var cspScannerInfo = CspScannerInfo()
+    private let cspReader: UnsafeRawPointer
+    private var cspConfig = CspConfig()
+    private var cspScannerInfo = CspScannerInfo()
 
     lazy var id: Foundation.UUID = {
         let fingerprint = """
@@ -49,12 +49,11 @@ final class CSP: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
+    
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var topLayerPixelData = {
-        fetchPixelData(at: layerTileSize.count - 1)
-    }()
+    lazy var topLayerPixelData = fetchPixelData(at: layerTileSize.count - 1)
 
     init?(path: URL) {
         guard let fp = dll.getCspReader?(path.filePath.oemCString) else { return nil }
@@ -131,7 +130,7 @@ final class CSP: Slide {
 }
 
 private final class libcsp_sdk: @unchecked Sendable {
-    private let dll = DLLLoader("libcsp_sdk", "csp")
+    private let dll = DLLLoader(name: "libcsp_sdk", folder: "csp")
 
     let getCspReader: (@convention(c) (UnsafePointer<CChar>?) -> UnsafeRawPointer)?
     let destroyCspReader: (@convention(c) (UnsafeRawPointer) -> Void)?

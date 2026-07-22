@@ -10,7 +10,7 @@ extension Slide {
         #else
             let tiff = TIFFOpen(url.filePath, "w")
         #endif
-        guard let tiff else { throw SlideExportError.failedCreateSVSFile(url: url) }
+        guard let tiff else { throw SlideExportError.failedToCreateSVSFile(url: url) }
         defer {
             TIFFClose(tiff)
         }
@@ -76,7 +76,7 @@ extension Slide {
                     }
                 }
             }
-            guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedWriteSVSDirectory }
+            guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedToWriteSVSDirectory }
 
             if index == 0 {
                 try writeImageDirectory(tiff, jpeg: fetchThumbnailJPEGImage())
@@ -131,7 +131,7 @@ extension Slide {
         _ = jpeg.withUnsafeMutableBytes { ptr in
             TIFFWriteRawStrip(tiff, 0, ptr.baseAddress, Int64(ptr.count))
         }
-        guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedWriteSVSDirectory }
+        guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedToWriteSVSDirectory }
     }
 
     private func tiffSetPhotometric(_ tiff: OpaquePointer, _ tjcs: Int32) -> Bool {

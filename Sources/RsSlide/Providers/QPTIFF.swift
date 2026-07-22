@@ -34,14 +34,14 @@ struct QPTIFFPreview: SlidePreview {
 }
 
 final class QPTIFF: Slide {
-    let tiff: OpaquePointer
-    var layerDir: [UInt32] = []
-    var tilePhotometric = 0
-    var macroDir: UInt32 = 0
-    var labelDir: UInt32 = 0
-    var imageDesc = ""
-    var quality = 85
-    var gamma: Double? = nil
+    private let tiff: OpaquePointer
+    private var layerDir: [UInt32] = []
+    private var tilePhotometric = 0
+    private var macroDir: UInt32 = 0
+    private var labelDir: UInt32 = 0
+    private var imageDesc = ""
+    private var quality = 85
+    private var gamma: Double? = nil
 
     lazy var id: UUID = {
         let fingerprint = """
@@ -65,12 +65,11 @@ final class QPTIFF: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
+    
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var topLayerPixelData = {
-        fetchPixelData(at: layerTileSize.count - 1)
-    }()
+    lazy var topLayerPixelData = fetchPixelData(at: layerTileSize.count - 1)
 
     init?(path: URL) {
         #if os(Windows)
