@@ -18,21 +18,21 @@ public struct TileCoordinate {
 }
 
 public struct TileTrait: CustomStringConvertible {
-    enum CompressionHint {
+    public enum CompressionHint {
         case jpeg
         case png
         case jxl
     }
-    enum PixelFormatHint: Int {
+    public enum PixelFormatHint: Int {
         case rgb = 3
         case gray = 1
     }
 
-    let size: (w: Int, h: Int)
-    let compression: CompressionHint
-    let pixelFormat: PixelFormatHint
-    let sampleBits: Int
-    let backgroundColorRGB: Int
+    public let size: (w: Int, h: Int)
+    public let compression: CompressionHint
+    public let pixelFormat: PixelFormatHint
+    public let sampleBits: Int
+    public let backgroundColorRGB: Int
 
     var maxBytes: Int {
         return size.h * pitchBytes
