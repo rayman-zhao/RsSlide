@@ -49,7 +49,7 @@ final class CSP: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
-    
+
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
@@ -119,7 +119,9 @@ final class CSP: Slide {
         let scale = Float(Double(scanObjective) / pow(Double(layerZoom), Double(coord.layer)))
         let tw = UInt32(tileTrait.size.w)
         let th = UInt32(tileTrait.size.h)
-        var info = CspImageInfo(x: UInt32(coord.col) * tw, y: UInt32(coord.row) * th, width: tw, height: th, data: nil, dataLen: 0)
+        var info = CspImageInfo(
+            x: UInt32(coord.col) * tw, y: UInt32(coord.row) * th, width: tw, height: th, data: nil,
+            dataLen: 0)
         guard dll.cspReadImg?(cspReader, scale, &info) == 0 else { return nil }
         defer { dll.cspDestroyImage?(&info) }
 
@@ -134,13 +136,18 @@ private final class libcsp_sdk: @unchecked Sendable {
 
     let getCspReader: (@convention(c) (UnsafePointer<CChar>?) -> UnsafeRawPointer)?
     let destroyCspReader: (@convention(c) (UnsafeRawPointer) -> Void)?
-    let cspReadPreview: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
-    let cspReadLabel: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
+    let cspReadPreview:
+        (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
+    let cspReadLabel:
+        (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
     let cspDestroyImage: (@convention(c) (UnsafePointer<CspImageInfo>) -> Void)?
-    let cspReadScannerInfo: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspScannerInfo>) -> Int32)?
-    let cspReadConfig: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspConfig>) -> Int32)?
+    let cspReadScannerInfo:
+        (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspScannerInfo>) -> Int32)?
+    let cspReadConfig:
+        (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<CspConfig>) -> Int32)?
     let cspGetLayerNum: (@convention(c) (UnsafeRawPointer, UnsafeMutablePointer<UInt32>) -> Int32)?
-    let cspReadImg: (@convention(c) (UnsafeRawPointer, Float, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
+    let cspReadImg:
+        (@convention(c) (UnsafeRawPointer, Float, UnsafeMutablePointer<CspImageInfo>) -> Int32)?
 
     init() {
         getCspReader = dll.getProc("GetCspReader")

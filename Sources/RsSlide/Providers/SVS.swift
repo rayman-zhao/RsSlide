@@ -18,7 +18,8 @@ struct SVSPreview: SlidePreview {
             TIFFClose(tiff)
         }
 
-        return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1) ?? TIFFReadJPEGImage(tiff, 1)
+        return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
+            ?? TIFFReadJPEGImage(tiff, 1)
     }
 }
 
@@ -30,8 +31,8 @@ final class SVS: Slide {
     private var labelDir: UInt32 = 0
     private var imageDesc = ""
     private var quality = 85
-    private var gamma: Double? = nil
-    private var cmsTransform: cmsHTRANSFORM? = nil
+    private var gamma: Double?
+    private var cmsTransform: cmsHTRANSFORM?
 
     lazy var id: UUID = {
         let fingerprint = """
@@ -55,7 +56,7 @@ final class SVS: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
-    
+
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
@@ -81,7 +82,7 @@ final class SVS: Slide {
 
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
-            //layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
+            // layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
@@ -118,7 +119,8 @@ final class SVS: Slide {
             var buf2 = [UInt32](repeating: 0, count: bufSize)
             cmsDoTransform(cmsTransform, buf, &buf2, cmsUInt32Number(bufSize))
 
-            let jpg = tjCompress(buf2, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
+            let jpg = tjCompress(
+                buf2, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
             return jpg
         }
 
@@ -148,7 +150,7 @@ final class SVS: Slide {
         while TIFFReadDirectory(tiff) == 1 {
             let dir = TIFFCurrentDirectory(tiff)
             // KFBio's tif messed up the Subfile Type, have to use tile size to help.
-            //let reduced: UInt32? = TIFFGetField(tiff, TIFFTAG_SUBFILETYPE)
+            // let reduced: UInt32? = TIFFGetField(tiff, TIFFTAG_SUBFILETYPE)
             let tw: UInt32? = TIFFGetField(tiff, TIFFTAG_TILEWIDTH)
 
             if dir == 0 && tw != nil {  // First directory always be bottom layer image.
@@ -158,9 +160,17 @@ final class SVS: Slide {
                 importLayer(from: dir)
             } else if dir == 1 {
                 // Ignore second non-reduced directory, should be thumbnail image.
-            } else if labelDir == 0, let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION), String(cString: desc).lowercased().contains("label") {
+            } else if labelDir == 0,
+                let desc: UnsafeMutablePointer<CChar> = TIFFGetField(
+                    tiff, TIFFTAG_IMAGEDESCRIPTION),
+                String(cString: desc).lowercased().contains("label")
+            {
                 labelDir = dir
-            } else if macroDir == 0, let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION), String(cString: desc).lowercased().contains("macro") {
+            } else if macroDir == 0,
+                let desc: UnsafeMutablePointer<CChar> = TIFFGetField(
+                    tiff, TIFFTAG_IMAGEDESCRIPTION),
+                String(cString: desc).lowercased().contains("macro")
+            {
                 macroDir = dir
             } else if labelDir == 0 && TIFFLastDirectory(tiff) == 0 {  // Second last directory, should be label image.
                 labelDir = dir
@@ -176,7 +186,9 @@ final class SVS: Slide {
 
         #if os(macOS)
             fflush(fp)
-            log.info("\n\(String(decoding: buf, as: UTF8.self))")
+            if let str = String(utf8String: buf) {
+                log.info("\n\(str)")
+            }
         #endif
     }
 
@@ -231,7 +243,8 @@ final class SVS: Slide {
             }
         }
 
-        let icc: (count: UInt32?, data: UnsafeMutableRawPointer?) = TIFFGetField(tiff, TIFFTAG_ICCPROFILE)
+        let icc: (count: UInt32?, data: UnsafeMutableRawPointer?) = TIFFGetField(
+            tiff, TIFFTAG_ICCPROFILE)
         if let iccCount = icc.count,
             let iccData = icc.data,
             let iccProfile = cmsOpenProfileFromMem(iccData, iccCount)
@@ -242,7 +255,9 @@ final class SVS: Slide {
                 let sRGB = cmsCreate_sRGBProfile()!
                 defer { cmsCloseProfile(sRGB) }
 
-                cmsTransform = cmsCreateTransform(iccProfile, CMS_TYPE_RGBA_8, sRGB, CMS_TYPE_RGBA_8, cmsUInt32Number(INTENT_PERCEPTUAL), 0)
+                cmsTransform = cmsCreateTransform(
+                    iccProfile, CMS_TYPE_RGBA_8, sRGB, CMS_TYPE_RGBA_8,
+                    cmsUInt32Number(INTENT_PERCEPTUAL), 0)
             } else {
                 log.warning("ICC profile color space is not RGB, ignored")
             }

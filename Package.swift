@@ -6,12 +6,12 @@ import PackageDescription
 let package = Package(
     name: "RsSlide",
     platforms: [
-    	.macOS(.v15),
+        .macOS(.v15)
     ],
     products: [
         .library(
             name: "RsSlide",
-            targets: ["RsSlide"]),
+            targets: ["RsSlide"])
     ],
     dependencies: [
         .package(url: "https://github.com/rayman-zhao/RsFoundation", branch: "main"),
@@ -26,27 +26,24 @@ let package = Package(
                 "CVendorSDKs",
             ],
             swiftSettings: [
-                //.strictMemorySafety(true),
-                .define("MORE_PROVIDERS_AVAILABLE"),
+                // .strictMemorySafety(true),
+                .define("MORE_PROVIDERS_AVAILABLE")
             ],
         ),
         .target(
             name: "CVendorSDKs",
-            dependencies: [
-            ],
-            exclude: [
-            ],
+            dependencies: [],
+            exclude: [],
             sources: [
                 "./Sources"
             ],
-            cxxSettings: [
-            ],
+            cxxSettings: [],
         ),
         .testTarget(
             name: "RsSlideTests",
             dependencies: ["RsSlide"],
             swiftSettings: [
-                .define("MORE_PROVIDERS_AVAILABLE"),
+                .define("MORE_PROVIDERS_AVAILABLE")
             ],
         ),
     ]

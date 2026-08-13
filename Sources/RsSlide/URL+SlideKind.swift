@@ -50,11 +50,14 @@ extension URL {
             #if MORE_PROVIDERS_AVAILABLE
                 if let url = reachableChild(named: "1.mds") {
                     log.trace("Found 1.mds in \(url.path)")
-                    return .slide(SlideFactory(preview: { MDSPreview(path: url) }, slide: { MDS(path: url) }))
+                    return .slide(
+                        SlideFactory(preview: { MDSPreview(path: url) }, slide: { MDS(path: url) }))
                 }
                 if let url = reachableChild(named: "1.mdsx") {
                     log.trace("Found 1.mdsx in \(url.path)")
-                    return .slide(SlideFactory(preview: { VMSDKPreview(path: url) }, slide: { VMSDK(path: url) }))
+                    return .slide(
+                        SlideFactory(
+                            preview: { VMSDKPreview(path: url) }, slide: { VMSDK(path: url) }))
                 }
             #endif
 
@@ -62,23 +65,31 @@ extension URL {
         }
 
         if name.hasSuffix(".ome.tif") || name.hasSuffix(".ome.tiff") {
-            return .slide(SlideFactory(preview: { OMETIFFPreview(path: self) }, slide: { OMETIFF(path: self) }))
+            return .slide(
+                SlideFactory(
+                    preview: { OMETIFFPreview(path: self) }, slide: { OMETIFF(path: self) }))
         }
         if name.hasSuffix(".svs") || name.hasSuffix(".tif") || name.hasSuffix(".tiff") {
-            return .slide(SlideFactory(preview: { SVSPreview(path: self) }, slide: { SVS(path: self) }))
+            return .slide(
+                SlideFactory(preview: { SVSPreview(path: self) }, slide: { SVS(path: self) }))
         }
         if name.hasSuffix(".csp") {
-            return .slide(SlideFactory(preview: { CSPPreview(path: self) }, slide: { CSP(path: self) }))
+            return .slide(
+                SlideFactory(preview: { CSPPreview(path: self) }, slide: { CSP(path: self) }))
         }
         if name.hasSuffix(".qptiff") {
-            return .slide(SlideFactory(preview: { QPTIFFPreview(path: self) }, slide: { QPTIFF(path: self) }))
+            return .slide(
+                SlideFactory(preview: { QPTIFFPreview(path: self) }, slide: { QPTIFF(path: self) }))
         }
         #if MORE_PROVIDERS_AVAILABLE
             if name.hasSuffix(".mds") {
-                return .slide(SlideFactory(preview: { MDSPreview(path: self) }, slide: { MDS(path: self) }))
+                return .slide(
+                    SlideFactory(preview: { MDSPreview(path: self) }, slide: { MDS(path: self) }))
             }
             if name.hasSuffix(".mdsx") || name.hasSuffix(".mdss") {
-                return .slide(SlideFactory(preview: { VMSDKPreview(path: self) }, slide: { VMSDK(path: self) }))
+                return .slide(
+                    SlideFactory(
+                        preview: { VMSDKPreview(path: self) }, slide: { VMSDK(path: self) }))
             }
         #endif
 

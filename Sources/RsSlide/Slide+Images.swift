@@ -23,7 +23,8 @@ extension Slide {
                 && tileTrait.sampleBits == 8
                 && tileTrait.compression == .jpeg
         else {
-            log.error("Failed to fetch thumbnail JPEG image. Only support RGB24 JPEG format slide file.")
+            log.error(
+                "Failed to fetch thumbnail JPEG image. Only support RGB24 JPEG format slide file.")
             return nil
         }
 
@@ -34,7 +35,10 @@ extension Slide {
         }
 
         guard layer >= 0 else { return nil }
-        guard let pxdata = (layer == layerImageSize.count - 1) ? topLayerPixelData : fetchPixelData(at: layer) else { return nil }
+        guard
+            let pxdata = (layer == layerImageSize.count - 1)
+                ? topLayerPixelData : fetchPixelData(at: layer)
+        else { return nil }
 
         var thumbnailWidth = maxSize
         var thumbnailHeight = maxSize
@@ -45,10 +49,12 @@ extension Slide {
         }
 
         if (thumbnailWidth, thumbnailHeight) == (pxdata.width, pxdata.height) {
-            return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
+            return tjCompress(
+                pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
         } else {
             let trimmed = trimmedPixelData(from: pxdata)
-            let thumbnail = scaleImage(trimmed.pixels, trimmed.width, trimmed.height, thumbnailWidth, thumbnailHeight)
+            let thumbnail = scaleImage(
+                trimmed.pixels, trimmed.width, trimmed.height, thumbnailWidth, thumbnailHeight)
             return tjCompress(thumbnail, tileTrait.tjPF, thumbnailWidth, thumbnailHeight)
         }
     }

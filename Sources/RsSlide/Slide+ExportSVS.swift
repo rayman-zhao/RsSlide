@@ -25,7 +25,9 @@ extension Slide {
             let height = layer.element.h
             let cols = layerTileSize[layer.offset].c
             let rows = layerTileSize[layer.offset].r
-            log.debug("Exporting layer \(layer.offset) with size \(width)x\(height) and tile size \(cols)x\(rows)")
+            log.debug(
+                "Exporting layer \(layer.offset) with size \(width)x\(height) and tile size \(cols)x\(rows)"
+            )
 
             if index == 0 {
                 let desc = """
@@ -50,7 +52,7 @@ extension Slide {
             _ = TIFFSetField(tiff, TIFFTAG_TILEWIDTH, UInt32(tileWidth))
             _ = TIFFSetField(tiff, TIFFTAG_TILELENGTH, UInt32(tileHeight))
             _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_JPEG))
-            //TIFFSetField(tiff, TIFFTAG_JPEGQUALITY, 75);
+            // TIFFSetField(tiff, TIFFTAG_JPEGQUALITY, 75);
 
             var firstTile = true
             for row in 0..<rows {
@@ -70,13 +72,16 @@ extension Slide {
                         }
                     }
 
-                    let tileId = TIFFComputeTile(tiff, UInt32(col) * tileWidth, UInt32(row) * tileHeight, 0, 0)
+                    let tileId = TIFFComputeTile(
+                        tiff, UInt32(col) * tileWidth, UInt32(row) * tileHeight, 0, 0)
                     _ = tileRawImage.withUnsafeMutableBytes { ptr in
                         TIFFWriteRawTile(tiff, tileId, ptr.baseAddress, Int64(ptr.count))
                     }
                 }
             }
-            guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedToWriteSVSDirectory }
+            guard TIFFWriteDirectory(tiff) == 1 else {
+                throw SlideExportError.failedToWriteSVSDirectory
+            }
 
             if index == 0 {
                 try writeImageDirectory(tiff, jpeg: fetchThumbnailJPEGImage())
@@ -131,7 +136,9 @@ extension Slide {
         _ = jpeg.withUnsafeMutableBytes { ptr in
             TIFFWriteRawStrip(tiff, 0, ptr.baseAddress, Int64(ptr.count))
         }
-        guard TIFFWriteDirectory(tiff) == 1 else { throw SlideExportError.failedToWriteSVSDirectory }
+        guard TIFFWriteDirectory(tiff) == 1 else {
+            throw SlideExportError.failedToWriteSVSDirectory
+        }
     }
 
     private func tiffSetPhotometric(_ tiff: OpaquePointer, _ tjcs: Int32) -> Bool {

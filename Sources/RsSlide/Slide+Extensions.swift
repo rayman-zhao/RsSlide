@@ -16,13 +16,17 @@ extension Slide {
             let rows = layerTileSize[coordinate.layer].r
             let cols = layerTileSize[coordinate.layer].c
             guard 0..<rows ~= coordinate.row && 0..<cols ~= coordinate.col else { return .invalid }
-            guard rows - 1 == coordinate.row || cols - 1 == coordinate.col else { return .valid(trimming: false) }
+            guard rows - 1 == coordinate.row || cols - 1 == coordinate.col else {
+                return .valid(trimming: false)
+            }
 
             let tileWidth = tileTrait.size.w
             let tileHeight = tileTrait.size.h
             let trimmedWidth = layerImageSize[coordinate.layer].w - coordinate.col * tileWidth
             let trimmedHeight = layerImageSize[coordinate.layer].h - coordinate.row * tileHeight
-            guard trimmedWidth < tileWidth || trimmedHeight < tileHeight else { return .valid(trimming: false) }
+            guard trimmedWidth < tileWidth || trimmedHeight < tileHeight else {
+                return .valid(trimming: false)
+            }
 
             return .valid(trimming: true)
         } else {
@@ -45,7 +49,9 @@ extension Slide {
         let virtualLayerHeight = Int(ceil(Double(from.height) / Double(scale)))
         let virtualLayerRows = Int(ceil(Double(virtualLayerHeight) / Double(tileTrait.size.h)))
         let virtualLayerCols = Int(ceil(Double(virtualLayerWidth) / Double(tileTrait.size.w)))
-        guard 0..<virtualLayerRows ~= coord.row && 0..<virtualLayerCols ~= coord.col else { return nil }
+        guard 0..<virtualLayerRows ~= coord.row && 0..<virtualLayerCols ~= coord.col else {
+            return nil
+        }
 
         let virtualTileX = coord.col * tileTrait.size.w
         let virtualTileY = coord.row * tileTrait.size.h
@@ -95,14 +101,17 @@ extension Slide {
             }
         }
 
-        return LayerPixelData(pixels: trimmed, layer: from.layer, width: from.width, pitch: rowBytes, height: from.height)
+        return LayerPixelData(
+            pixels: trimmed, layer: from.layer, width: from.width, pitch: rowBytes,
+            height: from.height)
     }
 
     func fetchPixelData(at layer: Int) -> LayerPixelData? {
         guard 0..<layerImageSize.count ~= layer else { return nil }
 
         let from = TileCoordinate(layer: layer, row: 0, col: 0)
-        let to = TileCoordinate(layer: layer, row: layerTileSize[layer].r - 1, col: layerTileSize[layer].c - 1)
+        let to = TileCoordinate(
+            layer: layer, row: layerTileSize[layer].r - 1, col: layerTileSize[layer].c - 1)
         return fetchPixelData(from: from, to: to)
     }
 
@@ -147,13 +156,16 @@ extension Slide {
                     tj,
                     img,
                     img.count,
-                    &pixels[(row - from.row) * tileHeight * pixelPitch + (col - from.col) * tileTrait.pitchBytes],
+                    &pixels[
+                        (row - from.row) * tileHeight * pixelPitch + (col - from.col)
+                            * tileTrait.pitchBytes],
                     Int32(pixelPitch),
                     tileTrait.tjPF.rawValue
                 )
             }
         }
 
-        return LayerPixelData(pixels: pixels, layer: pixelLayer, width: width, pitch: pitch, height: height)
+        return LayerPixelData(
+            pixels: pixels, layer: pixelLayer, width: width, pitch: pitch, height: height)
     }
 }

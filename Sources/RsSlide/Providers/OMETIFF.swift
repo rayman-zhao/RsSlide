@@ -18,7 +18,8 @@ struct OMETIFFPreview: SlidePreview {
             TIFFClose(tiff)
         }
 
-        let subifd: (count: UInt16?, offset: UnsafeMutablePointer<UInt64>?) = TIFFGetField(tiff, TIFFTAG_SUBIFD)
+        let subifd: (count: UInt16?, offset: UnsafeMutablePointer<UInt64>?) = TIFFGetField(
+            tiff, TIFFTAG_SUBIFD)
         if let count = subifd.count,
             let offset = subifd.offset, count > 0,
             let macro = TIFFReadJPEGImage(tiff, 0, offset.pointee)
@@ -56,7 +57,7 @@ final class OMETIFF: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
-    
+
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
@@ -91,7 +92,7 @@ final class OMETIFF: Slide {
 
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
-            //layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
+            // layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
@@ -123,7 +124,8 @@ final class OMETIFF: Slide {
             if tilePhotometric == PHOTOMETRIC_RGB {
                 var buf = [UInt32](repeating: 0, count: pixelCount)
                 guard TIFFReadRGBATile(tiff, tileX, tileY, &buf) > 0 else { return nil }
-                return tjCompress(buf, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
+                return tjCompress(
+                    buf, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
             } else {
                 let bufSize = pixelCount * tileTrait.pixelBytes
                 var buf = [UInt8](repeating: 0, count: bufSize)
@@ -135,7 +137,8 @@ final class OMETIFF: Slide {
                 guard TIFFSetDirectory(tiff, dirnum, diroffset) else { return nil }
                 let bufSize = Int(w * h)
                 buf = [UInt32](repeating: 0, count: bufSize)
-                guard TIFFReadRGBAImageOriented(tiff, w, h, &buf!, ORIENTATION_TOPLEFT, 0) == 1 else { return nil }
+                guard TIFFReadRGBAImageOriented(tiff, w, h, &buf!, ORIENTATION_TOPLEFT, 0) == 1
+                else { return nil }
                 layerData[coord.layer] = .strip(dirnum, diroffset, buf, w, h)
             }
 
@@ -150,7 +153,8 @@ final class OMETIFF: Slide {
             for row in 0..<tileHeight {
                 let srcStart = (tileY + row) * iw + tileX
                 let dstStart = row * tileWidth
-                tilePixels[dstStart..<(dstStart + tileWidth)] = buf![srcStart..<(srcStart + tileWidth)]
+                tilePixels[dstStart..<(dstStart + tileWidth)] =
+                    buf![srcStart..<(srcStart + tileWidth)]
             }
 
             return tjCompress(tilePixels, TJPF_RGBA, tileWidth, tileHeight, 0, quality)
@@ -181,7 +185,8 @@ final class OMETIFF: Slide {
                     let v = UUID(uuidString: String(value.dropFirst("urn:uuid:".count)))
                 {
                     id = v
-                } else if parent == "Instrument" && name == "Objective" && attribute == "NominalMagnification",
+                } else if parent == "Instrument" && name == "Objective"
+                    && attribute == "NominalMagnification",
                     let v = Double(value), v > 0
                 {
                     scanObjective = Int(v)
@@ -189,7 +194,9 @@ final class OMETIFF: Slide {
                     let v = Double(value), v > 0.0 && (scanScale == 0.0 || v < scanScale)
                 {
                     scanScale = v
-                } else if parent == "Image" && name == "Pixels" && attribute == "PhysicalSizeXUnit" && value == "mm" {
+                } else if parent == "Image" && name == "Pixels" && attribute == "PhysicalSizeXUnit"
+                    && value == "mm"
+                {
                     scanScale *= 1000.0
                 } else {
                     log.trace("Ignore \(parent) - \(name) - \(attribute) - \(value)")
@@ -220,9 +227,11 @@ final class OMETIFF: Slide {
                 ))
         }
 
-        let subifd: (count: UInt16?, ptr: UnsafeMutablePointer<UInt64>?) = TIFFGetField(tiff, TIFFTAG_SUBIFD)
+        let subifd: (count: UInt16?, ptr: UnsafeMutablePointer<UInt64>?) = TIFFGetField(
+            tiff, TIFFTAG_SUBIFD)
         if let count = subifd.count, let ptr = subifd.ptr {
-            let offset = Array(UnsafeBufferPointer(start: ptr, count: Int(count)))  // Need to copy, otherwise the pointer will be invalid after TIFFSetSubDirectory.
+            // Need to copy, otherwise the pointer will be invalid after TIFFSetSubDirectory.
+            let offset = Array(UnsafeBufferPointer(start: ptr, count: Int(count)))
             for diroffset in offset {
                 guard TIFFSetSubDirectory(tiff, diroffset) == 1 else { break }
                 guard let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),

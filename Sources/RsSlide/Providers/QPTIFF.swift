@@ -41,7 +41,7 @@ final class QPTIFF: Slide {
     private var labelDir: UInt32 = 0
     private var imageDesc = ""
     private var quality = 85
-    private var gamma: Double? = nil
+    private var gamma: Double?
 
     lazy var id: UUID = {
         let fingerprint = """
@@ -65,7 +65,7 @@ final class QPTIFF: Slide {
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""
-    
+
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
@@ -91,7 +91,7 @@ final class QPTIFF: Slide {
 
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
-            //layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
+            // layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
