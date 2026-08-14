@@ -1,9 +1,9 @@
 import Foundation
 import FoundationXML
-import Testing
 import LibJPEGTurbo
 import LibTIFF
 import RsSlide
+import Testing
 
 @Suite
 struct ExportTests {
@@ -27,11 +27,12 @@ struct ExportTests {
             fatalError("Failed to create slide view for \(fn)")
         }
 
-        let url = URL(filePath: "\(s.name)_export.jpg", directoryHint: .notDirectory, relativeTo: BASE)
+        let url = URL(
+            filePath: "\(s.name)_export.jpg", directoryHint: .notDirectory, relativeTo: BASE)
         print("Exporting to \(url.filePath)")
 
         let st = Date()
-        try s.save(to: url)
+        try s.crop(to: url)
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
@@ -54,11 +55,12 @@ struct ExportTests {
             fatalError("Failed to create slide view for \(fn)")
         }
 
-        let url = URL(filePath: "\(s.name)_export.svs", directoryHint: .notDirectory, relativeTo: BASE)
+        let url = URL(
+            filePath: "\(s.name)_export.svs", directoryHint: .notDirectory, relativeTo: BASE)
         print("Exporting to \(url.filePath)")
 
         let st = Date()
-        try s.save(to: url)
+        try s.convert(to: url)
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
@@ -85,7 +87,7 @@ struct ExportTests {
             for rw in 0..<layer.r {
                 for cl in 0..<layer.c {
                     let coord = TileCoordinate(layer: li, row: rw, col: cl)
-                    guard let _ = s.fetchTileImage(for: coord) else { continue }
+                    guard s.fetchTileImage(for: coord) != nil else { continue }
                     cnt += 1
                 }
             }

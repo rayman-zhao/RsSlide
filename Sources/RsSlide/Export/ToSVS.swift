@@ -4,7 +4,7 @@ import LibTIFF
 import RsFoundation
 
 extension Slide {
-    func saveAsSVS(to url: URL) throws {
+    func convert(toSVS url: URL) throws {
         #if os(Windows)
             let tiff = TIFFOpenW(url.filePath.wideString, "w")
         #else
