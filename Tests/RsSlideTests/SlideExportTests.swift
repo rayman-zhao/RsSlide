@@ -31,8 +31,14 @@ struct ExportTests {
             filePath: "\(s.name)_export.jpg", directoryHint: .notDirectory, relativeTo: BASE)
         print("Exporting to \(url.filePath)")
 
+        let left = s.tileTrait.size.w * 4 / 3
+        let top = s.tileTrait.size.h * 7 / 4
+        let width = s.layerImageSize[0].w - left * 2
+        let height = s.layerImageSize[0].h - top * 2
+        let rect = CGRect(x: left, y: top, width: width, height: height)
+
         let st = Date()
-        try s.crop(to: url)
+        try s.crop(rect: rect, to: url)
         let et = Date()
         print("Exported in \(et.timeIntervalSince(st)) seconds")
 
@@ -41,7 +47,7 @@ struct ExportTests {
 
         let jpeg = Array(data)
         let (w, h) = tjDecompressHeader(jpeg)
-        #expect(w == s.layerImageSize[0].w || h == s.layerImageSize[0].h)
+        #expect(w == width || h == height)
     }
 
     @Test
