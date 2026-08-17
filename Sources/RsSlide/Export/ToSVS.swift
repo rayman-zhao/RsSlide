@@ -10,7 +10,7 @@ extension Slide {
         #else
             let tiff = TIFFOpen(url.filePath, "w")
         #endif
-        guard let tiff else { throw SlideExportError.failedToCreateSVSFile(url: url) }
+        guard let tiff else { throw SlideExportError.failedToCreateFile(url: url) }
         defer {
             TIFFClose(tiff)
         }
@@ -80,7 +80,7 @@ extension Slide {
                 }
             }
             guard TIFFWriteDirectory(tiff) == 1 else {
-                throw SlideExportError.failedToWriteSVSDirectory
+                throw SlideExportError.failedToWriteFile
             }
 
             if index == 0 {
@@ -137,7 +137,7 @@ extension Slide {
             TIFFWriteRawStrip(tiff, 0, ptr.baseAddress, Int64(ptr.count))
         }
         guard TIFFWriteDirectory(tiff) == 1 else {
-            throw SlideExportError.failedToWriteSVSDirectory
+            throw SlideExportError.failedToWriteFile
         }
     }
 

@@ -28,8 +28,8 @@ struct ExportTests {
         }
 
         let url = URL(
-            filePath: "\(s.name)_export.jpg", directoryHint: .notDirectory, relativeTo: BASE)
-        print("Exporting to \(url.filePath)")
+            filePath: "\(s.name)_crop.jpg", directoryHint: .notDirectory, relativeTo: BASE)
+        print("Cropping to \(url.filePath)")
 
         let left = s.tileTrait.size.w * 4 / 3
         let top = s.tileTrait.size.h * 7 / 4
@@ -40,7 +40,7 @@ struct ExportTests {
         let st = Date()
         try s.crop(rect: rect, to: url)
         let et = Date()
-        print("Exported in \(et.timeIntervalSince(st)) seconds")
+        print("Cropped in \(et.timeIntervalSince(st)) seconds")
 
         let data = try Data(contentsOf: url)
         #expect(data.isJPEG)
@@ -48,6 +48,51 @@ struct ExportTests {
         let jpeg = Array(data)
         let (w, h) = tjDecompressHeader(jpeg)
         #expect(w == width || h == height)
+    }
+
+    @Test
+    func exportTIFF() throws {
+        let fn = "MDSX/slide.mdsx"
+
+        guard case .slide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
+            fatalError("Invalid slide trait for \(fn)")
+        }
+        guard let s = builder.makeSlide() else {
+            fatalError("Failed to create slide view for \(fn)")
+        }
+
+        let url = URL(
+            filePath: "\(s.name)_crop.tif", directoryHint: .notDirectory, relativeTo: BASE)
+        print("Cropping to \(url.filePath)")
+
+        let left = s.tileTrait.size.w * 4 / 3
+        let top = s.tileTrait.size.h * 7 / 4
+        let width = s.layerImageSize[0].w - left * 2
+        let height = s.layerImageSize[0].h - top * 2
+        let rect = CGRect(x: left, y: top, width: width, height: height)
+
+        let st = Date()
+        try s.crop(rect: rect, to: url)
+        let et = Date()
+        print("Cropped in \(et.timeIntervalSince(st)) seconds")
+
+        #if os(Windows)
+            guard let tiff = TIFFOpenW(url.filePath.wideString, "r") else {
+                fatalError("Failed to open TIFF export for validation")
+            }
+        #else
+            guard let tiff = TIFFOpen(url.filePath, "r") else {
+                fatalError("Failed to open TIFF export for validation")
+            }
+        #endif
+        defer { TIFFClose(tiff) }
+
+        let w: UInt32? = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH)
+        let h: UInt32? = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
+        let rowsPerStrip: UInt32? = TIFFGetField(tiff, TIFFTAG_ROWSPERSTRIP)
+        #expect(w == UInt32(width))
+        #expect(h == UInt32(height))
+        #expect(rowsPerStrip == UInt32(s.tileTrait.size.h))
     }
 
     @Test
@@ -62,13 +107,13 @@ struct ExportTests {
         }
 
         let url = URL(
-            filePath: "\(s.name)_export.svs", directoryHint: .notDirectory, relativeTo: BASE)
-        print("Exporting to \(url.filePath)")
+            filePath: "\(s.name)_convert.svs", directoryHint: .notDirectory, relativeTo: BASE)
+        print("Converting to \(url.filePath)")
 
         let st = Date()
         try s.convert(to: url)
         let et = Date()
-        print("Exported in \(et.timeIntervalSince(st)) seconds")
+        print("Converted in \(et.timeIntervalSince(st)) seconds")
 
         guard case .slide(let builder2) = url.slideKind else {
             fatalError("Invalid slide trait for \(url)")

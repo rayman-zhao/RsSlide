@@ -3,9 +3,7 @@ import LibJPEGTurbo
 
 extension Slide {
     func crop(rect: CGRect, toJPEG url: URL) throws {
-        let roiWidth = UInt16(rect.width)
-        let roiHeight = UInt16(rect.height)
-        guard roiWidth < UInt16.max && roiHeight < UInt16.max else {
+        guard rect.width < CGFloat(UInt16.max) && rect.height < CGFloat(UInt16.max) else {
             throw SlideExportError.imageTooLargeForJPEG(
                 width: layerImageSize.last?.w, height: layerImageSize.last?.h)
         }
@@ -41,12 +39,13 @@ extension Slide {
                 tj3Compress8(
                     tj, baseAddress + offset,
                     Int32(rect.width), Int32(pxdata.pitch), Int32(rect.height),
-                    tileTrait.tjPF.rawValue, &jpegBuf, &jpegSize) == 0,
+                    tileTrait.tjPF.rawValue, &jpegBuf, &jpegSize
+                ) == 0,
                 let jpegBuf, jpegSize > 0
             {
                 try Data(bytesNoCopy: jpegBuf, count: jpegSize, deallocator: .none).write(to: url)
             } else {
-                throw SlideExportError.insufficientMemoryForJPEG
+                throw SlideExportError.failedToCompressJPEG
             }
         }
     }

@@ -4,9 +4,9 @@ public enum SlideExportError: Error {
     case unsupportedExportFormat(url: URL)
     case imageTooLargeForJPEG(width: Int?, height: Int?)
     case insufficientMemoryForPixelData
-    case insufficientMemoryForJPEG
-    case failedToCreateSVSFile(url: URL)
-    case failedToWriteSVSDirectory
+    case failedToCompressJPEG
+    case failedToCreateFile(url: URL)
+    case failedToWriteFile
 }
 
 extension Slide {
@@ -22,13 +22,14 @@ extension Slide {
     }
 
     public func crop(rect: CGRect? = nil, to url: URL) throws {
-        let rect =
-            rect ?? CGRect(x: 0, y: 0, width: layerImageSize[0].w, height: layerImageSize[0].h)
+        let maxRect = CGRect(x: 0, y: 0, width: layerImageSize[0].w, height: layerImageSize[0].h)
+        let rect = (rect ?? maxRect).intersection(maxRect)
         let fn = url.lastPathComponent.lowercased()
+
         if fn.hasSuffix(".jpg") || fn.hasSuffix(".jpeg") {
             try crop(rect: rect, toJPEG: url)
         } else if fn.hasSuffix(".tif") || fn.hasSuffix(".tiff") {
-            // try saveAsOMETIFF(to: url)
+            try crop(rect: rect, toTIFF: url)
         } else {
             throw SlideExportError.unsupportedExportFormat(url: url)
         }
