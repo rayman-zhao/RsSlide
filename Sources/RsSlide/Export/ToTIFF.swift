@@ -18,7 +18,7 @@ extension Slide {
         _ = TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, UInt32(rect.height))
         _ = TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, UInt16(tileTrait.sampleBits))
         _ = TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, UInt16(tileTrait.pixelFormat.rawValue))
-        _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_LZW))
+        _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_ADOBE_DEFLATE))
         _ = TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, UInt16(PLANARCONFIG_CONTIG))
         _ = TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, UInt32(stripHeight))
         _ = TIFFSetField(tiff, TIFFTAG_RESOLUTIONUNIT, UInt16(RESUNIT_INCH))
