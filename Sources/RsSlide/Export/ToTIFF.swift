@@ -4,6 +4,11 @@ import RsFoundation
 
 extension Slide {
     func crop(rect: CGRect, toTIFF url: URL) throws {
+        guard rect.width * rect.height * CGFloat(tileTrait.pixelBytes) < CGFloat(UInt32.max) else {
+            throw SlideExportError.imageTooLarge(
+                width: Int(rect.width), height: Int(rect.height))
+        }
+
         #if os(Windows)
             let tiff = TIFFOpenW(url.filePath.wideString, "w")
         #else
@@ -87,7 +92,7 @@ extension Slide {
                     {
                         stripNumber += 1
                     } else {
-                        throw SlideExportError.failedToWriteFile
+                        throw SlideExportError.failedToWriteFile(url: url)
                     }
                 }
 
@@ -97,7 +102,7 @@ extension Slide {
         }
 
         guard TIFFWriteDirectory(tiff) == 1 else {
-            throw SlideExportError.failedToWriteFile
+            throw SlideExportError.failedToWriteFile(url: url)
         }
     }
 }

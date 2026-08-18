@@ -2,11 +2,11 @@ import Foundation
 
 public enum SlideExportError: Error {
     case unsupportedExportFormat(url: URL)
-    case imageTooLargeForJPEG(width: Int?, height: Int?)
+    case imageTooLarge(width: Int?, height: Int?)
     case insufficientMemoryForPixelData
     case failedToCompressJPEG
     case failedToCreateFile(url: URL)
-    case failedToWriteFile
+    case failedToWriteFile(url: URL)
 }
 
 extension Slide {

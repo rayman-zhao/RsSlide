@@ -4,8 +4,7 @@ import LibJPEGTurbo
 extension Slide {
     func crop(rect: CGRect, toJPEG url: URL) throws {
         guard rect.width < CGFloat(UInt16.max) && rect.height < CGFloat(UInt16.max) else {
-            throw SlideExportError.imageTooLargeForJPEG(
-                width: layerImageSize.last?.w, height: layerImageSize.last?.h)
+            throw SlideExportError.imageTooLarge(width: Int(rect.width), height: Int(rect.height))
         }
 
         let colMin = Int(floor(rect.minX / CGFloat(tileTrait.size.w)))

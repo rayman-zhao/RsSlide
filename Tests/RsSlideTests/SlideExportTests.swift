@@ -52,7 +52,7 @@ struct ExportTests {
 
     @Test
     func exportTIFF() throws {
-        let fn = "MDSX/slide.mdsx"
+        let fn = "KFB/1021754 (2).tif"
 
         guard case .slide(let builder) = URL(filePath: fn, relativeTo: BASE).slideKind else {
             fatalError("Invalid slide trait for \(fn)")
@@ -65,10 +65,10 @@ struct ExportTests {
             filePath: "\(s.name)_crop.tif", directoryHint: .notDirectory, relativeTo: BASE)
         print("Cropping to \(url.filePath)")
 
-        let left = s.tileTrait.size.w * 4 / 3
-        let top = s.tileTrait.size.h * 7 / 4
-        let width = s.layerImageSize[0].w - left * 2
-        let height = s.layerImageSize[0].h - top * 2
+        let left = s.layerImageSize[0].w / 4
+        let top = s.layerImageSize[0].h / 4
+        let width = s.layerImageSize[0].w / 2
+        let height = s.layerImageSize[0].h / 2
         let rect = CGRect(x: left, y: top, width: width, height: height)
 
         let st = Date()

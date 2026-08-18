@@ -80,21 +80,19 @@ extension Slide {
                 }
             }
             guard TIFFWriteDirectory(tiff) == 1 else {
-                throw SlideExportError.failedToWriteFile
+                throw SlideExportError.failedToWriteFile(url: url)
             }
 
             if index == 0 {
-                try writeImageDirectory(tiff, jpeg: fetchThumbnailJPEGImage())
+                try writeImageDirectory(tiff, url: url, jpeg: fetchThumbnailJPEGImage())
             }
         }
-        try writeImageDirectory(tiff, jpeg: fetchLabelJPEGImage(), name: "Aperio\nlabel")
-        try writeImageDirectory(tiff, jpeg: fetchMacroJPEGImage(), name: "Aperio\nmacro")
+        try writeImageDirectory(tiff, url: url, jpeg: fetchLabelJPEGImage(), name: "Aperio\nlabel")
+        try writeImageDirectory(tiff, url: url, jpeg: fetchMacroJPEGImage(), name: "Aperio\nmacro")
     }
 
     private func writeImageDirectory(
-        _ tiff: OpaquePointer,
-        jpeg: [UInt8]?,
-        name: String? = nil
+        _ tiff: OpaquePointer, url: URL, jpeg: [UInt8]?, name: String? = nil
     ) throws {
         guard var jpeg = jpeg else {
             log.info("No JPEG image to write for description: \(name ?? "thumbnail")")
@@ -137,7 +135,7 @@ extension Slide {
             TIFFWriteRawStrip(tiff, 0, ptr.baseAddress, Int64(ptr.count))
         }
         guard TIFFWriteDirectory(tiff) == 1 else {
-            throw SlideExportError.failedToWriteFile
+            throw SlideExportError.failedToWriteFile(url: url)
         }
     }
 
