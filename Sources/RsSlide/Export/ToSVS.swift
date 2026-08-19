@@ -84,32 +84,50 @@ extension Slide {
             }
 
             if index == 0 {
-                try writeImageDirectory(tiff, url: url, jpeg: fetchThumbnailJPEGImage())
+                guard writeImageDirectory(tiff, jpeg: fetchThumbnailJPEGImage()) == 1 else {
+                    throw SlideExportError.failedToWriteFile(url: url)
+                }
             }
         }
-        try writeImageDirectory(tiff, url: url, jpeg: fetchLabelJPEGImage(), name: "Aperio\nlabel")
-        try writeImageDirectory(tiff, url: url, jpeg: fetchMacroJPEGImage(), name: "Aperio\nmacro")
+        // Accoording to openslide comments, "NewSubfileType 1 for the label associated image, 9 for the macro associated image"
+        guard
+            writeImageDirectory(
+                tiff,
+                jpeg: fetchLabelJPEGImage(),
+                name: "Aperio\nlabel",
+                subfileType: UInt32(FILETYPE_REDUCEDIMAGE)
+            ) == 1
+                && writeImageDirectory(
+                    tiff,
+                    jpeg: fetchMacroJPEGImage(),
+                    name: "Aperio\nmacro",
+                    subfileType: UInt32(9)
+                ) == 1
+        else {
+            throw SlideExportError.failedToWriteFile(url: url)
+        }
     }
 
     private func writeImageDirectory(
-        _ tiff: OpaquePointer, url: URL, jpeg: [UInt8]?, name: String? = nil
-    ) throws {
+        _ tiff: OpaquePointer, jpeg: [UInt8]?, name: String? = nil, subfileType: UInt32? = nil
+    ) -> Int32 {
         guard var jpeg = jpeg else {
             log.info("No JPEG image to write for description: \(name ?? "thumbnail")")
-            return
+            return 0
         }
 
         let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
         defer { tj3Destroy(tj) }
 
         if tj3DecompressHeader(tj, jpeg, jpeg.count) == 0 {
+            if let subfileType {
+                _ = TIFFSetField(tiff, TIFFTAG_SUBFILETYPE, subfileType)
+            }
+
             let width = UInt32(tj3Get(tj, TJPARAM_JPEGWIDTH.rawValue))
             let height = UInt32(tj3Get(tj, TJPARAM_JPEGHEIGHT.rawValue))
-
             _ = TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, width)
-
             _ = TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, height)
-
             _ = TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, height)
 
             if let name {
@@ -120,13 +138,9 @@ extension Slide {
             }
 
             _ = TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, UInt16(8))
-
             _ = TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, UInt16(3))
-
             _ = TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, UInt16(PLANARCONFIG_CONTIG))
-
             _ = TIFFSetField(tiff, TIFFTAG_COMPRESSION, UInt16(COMPRESSION_JPEG))
-
             _ = tiffSetPhotometric(tiff, tj3Get(tj, TJPARAM_COLORSPACE.rawValue))
             _ = tiffSetSubsampling(tiff, tj3Get(tj, TJPARAM_SUBSAMP.rawValue))
         }
@@ -134,9 +148,7 @@ extension Slide {
         _ = jpeg.withUnsafeMutableBytes { ptr in
             TIFFWriteRawStrip(tiff, 0, ptr.baseAddress, Int64(ptr.count))
         }
-        guard TIFFWriteDirectory(tiff) == 1 else {
-            throw SlideExportError.failedToWriteFile(url: url)
-        }
+        return TIFFWriteDirectory(tiff)
     }
 
     private func tiffSetPhotometric(_ tiff: OpaquePointer, _ tjcs: Int32) -> Bool {

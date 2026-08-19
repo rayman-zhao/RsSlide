@@ -149,8 +149,8 @@ final class SVS: Slide {
 
         while TIFFReadDirectory(tiff) == 1 {
             let dir = TIFFCurrentDirectory(tiff)
-            // KFBio's tif messed up the Subfile Type, have to use tile size to help.
-            // let reduced: UInt32? = TIFFGetField(tiff, TIFFTAG_SUBFILETYPE)
+            // Accoording to openslide comments, "NewSubfileType 1 for the label associated image, 9 for the macro associated image"
+            // So that the label image also be "reduced" image, thus have to use the tile size to help.
             let tw: UInt32? = TIFFGetField(tiff, TIFFTAG_TILEWIDTH)
 
             if dir == 0 && tw != nil {  // First directory always be bottom layer image.
