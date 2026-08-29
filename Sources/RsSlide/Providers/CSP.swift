@@ -69,7 +69,7 @@ final class CSP: Slide {
 
         guard dll.cspReadScannerInfo?(cspReader, &cspScannerInfo) == 0 else { return nil }
         guard dll.cspReadConfig?(cspReader, &cspConfig) == 0 else { return nil }
-        scanObjective = Int(cspConfig.scanRatio)
+        scanObjective = Int(ceil(cspConfig.scanRatio))
         scanScale = Double(cspConfig.mpp)
         tileTrait = TileTrait(width: Int(cspConfig.tileWidth), height: Int(cspConfig.tileHeight))
         layerZoom = Int(cspConfig.downsamplingRatio)
@@ -116,7 +116,7 @@ final class CSP: Slide {
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
-        let scale = Float(Double(scanObjective) / pow(Double(layerZoom), Double(coord.layer)))
+        let scale = Float(Double(cspConfig.scanRatio) / pow(Double(layerZoom), Double(coord.layer)))
         let tw = UInt32(tileTrait.size.w)
         let th = UInt32(tileTrait.size.h)
         var info = CspImageInfo(
