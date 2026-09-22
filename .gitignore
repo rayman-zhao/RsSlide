@@ -34,6 +34,8 @@ Package.resolved
 .DS_Store
 .swiftpm/
 .zcode/
+.zcodeignore
+
 #.swiftpm/configuration/registries.json
 #.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 

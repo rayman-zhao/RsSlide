@@ -18,7 +18,11 @@ struct SVSPreview: SlidePreview {
             TIFFClose(tiff)
         }
 
-        return TIFFReadJPEGImage(tiff, TIFFNumberOfDirectories(tiff) - 1)
+        // Directory count may be 0 when the file is a stripped/corrupt TIFF without directories.
+        let dirCount = TIFFNumberOfDirectories(tiff)
+        guard dirCount > 0 else { return nil }
+
+        return TIFFReadJPEGImage(tiff, dirCount - 1)
             ?? TIFFReadJPEGImage(tiff, 1)
     }
 }

@@ -1,31 +1,33 @@
 import Foundation
-import Testing
 import LibTIFF
 import RsSlide
+import Testing
 
 @Suite
 struct SlidePreviewTests {
-   init() async {
-       await TIFFSetWarningHandler { _, _ in }
-   }
+    init() async {
+        await TIFFSetWarningHandler { _, _ in }
+    }
 
-    @Test(.serialized, arguments: [
-        ("SVS/B20028048-1.svs", false),
-        ("SVS/125870-2022;1C_20220926112546.svs", false),
-        ("SVS/2312399.svs", false),
-        ("KFB/1021754 (2).tif", false),
-        ("MDS/6横纹肌肉瘤/", true),
-        ("MDS/19.1_20160414_1904236501_2/1.mds", true),
-        ("MDS/114504/1.mds", true),
-        ("MDS/0002/1.mds", true),
-        ("MDSX/slide.mdsx", true),
-        ("MDSX/mdsx_test_enc/1.mdsx", true),
-        ("迪英加/L1-4.svs", false),
-        ("CSP/sample.csp", false),
-        ("OMETIFF/microscope_ometiff.ome.tiff", false),
-        ("OMETIFF/Leica-1.ome.tiff", false),
-        ("QPTIFF/_20250228132506.qptiff", false),
-    ])
+    @Test(
+        .serialized,
+        arguments: [
+            ("SVS/B20028048-1.svs", false),
+            ("SVS/125870-2022;1C_20220926112546.svs", false),
+            ("SVS/2312399.svs", false),
+            ("KFB/1021754 (2).tif", false),
+            ("MDS/6横纹肌肉瘤/", true),
+            ("MDS/19.1_20160414_1904236501_2/1.mds", true),
+            ("MDS/114504/1.mds", true),
+            ("MDS/0002/1.mds", true),
+            ("MDSX/slide.mdsx", true),
+            ("MDSX/mdsx_test_enc/1.mdsx", true),
+            ("迪英加/L1-4.svs", false),
+            ("CSP/sample.csp", false),
+            ("OMETIFF/microscope_ometiff.ome.tiff", false),
+            ("OMETIFF/Leica-1.ome.tiff", false),
+            ("QPTIFF/_20250228132506.qptiff", false),
+        ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
         if more && (trait == .genericFile || trait == .genericFolder) {
@@ -55,8 +57,10 @@ struct SlidePreviewTests {
         #expect(img.isJPEG)
         print("Valid JPEG in \(img.count) bytes")
 
-        try! img.write(to: URL(filePath: "preview.jpg",
-                          directoryHint: .notDirectory,
-                          relativeTo: BASE))
+        try! img.write(
+            to: URL(
+                filePath: "preview.jpg",
+                directoryHint: .notDirectory,
+                relativeTo: BASE))
     }
 }
