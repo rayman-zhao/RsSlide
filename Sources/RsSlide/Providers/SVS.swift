@@ -4,14 +4,18 @@ import LibTIFF
 import LittleCMS
 import RsFoundation
 
-struct SVSPreview: SlidePreview {
-    let path: URL
+struct SVSPreview: InternalSlidePreview {
+    let fileInfo: SlideFileInfo
+
+    init(path: URL) {
+        fileInfo = SlideFileInfo(url: path)
+    }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
         #if os(Windows)
-            let tiff = TIFFOpenW(path.path.wideString, "rh")
+            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh")
         #else
-            let tiff = TIFFOpen(path.path, "rh")
+            let tiff = TIFFOpen(fileInfo.mainPath, "rh")
         #endif
         guard tiff != nil else { return nil }
         defer {
@@ -27,7 +31,7 @@ struct SVSPreview: SlidePreview {
     }
 }
 
-final class SVS: Slide {
+final class SVS: InternalSlide {
     private let tiff: OpaquePointer
     private var layerDir: [UInt32] = []
     private var tilePhotometric = 0
@@ -38,6 +42,8 @@ final class SVS: Slide {
     private var gamma: Double?
     private var cmsTransform: cmsHTRANSFORM?
 
+    let fileInfo: SlideFileInfo
+
     lazy var id: UUID = {
         let fingerprint = """
             dataSize: \(dataSize)
@@ -47,12 +53,6 @@ final class SVS: Slide {
 
         return Data(fingerprint.utf8).hashUUID
     }()
-    var mainPath: String
-    var createTime: Date
-    var modifyTime: Date
-    var name: String
-    var format: String
-    var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
     let tierCount: Int = 1
@@ -74,13 +74,7 @@ final class SVS: Slide {
         #endif
         self.tiff = tiff
 
-        mainPath = path.path
-        let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-        createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
-        modifyTime = rv?.contentModificationDate ?? Date(timeIntervalSince1970: 0)
-        name = path.deletingPathExtension().lastPathComponent
-        format = path.pathExtension.uppercased()
-        dataSize = path.fileSize
+        fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
 

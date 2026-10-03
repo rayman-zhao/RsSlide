@@ -5,11 +5,15 @@ import WinSDK
 
 private let dll = libcsp_sdk()
 
-struct CSPPreview: SlidePreview {
-    let path: URL
+struct CSPPreview: InternalSlidePreview {
+    let fileInfo: SlideFileInfo
+
+    init(path: URL) {
+        fileInfo = SlideFileInfo(url: path)
+    }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
-        guard let fp = dll.getCspReader?(path.filePath.oemCString) else { return nil }
+        guard let fp = dll.getCspReader?(fileInfo.mainPath.oemCString) else { return nil }
         defer { dll.destroyCspReader?(fp) }
 
         var info = CspImageInfo()
@@ -22,10 +26,12 @@ struct CSPPreview: SlidePreview {
     }
 }
 
-final class CSP: Slide {
+final class CSP: InternalSlide {
     private let cspReader: UnsafeRawPointer
     private var cspConfig = CspConfig()
     private var cspScannerInfo = CspScannerInfo()
+
+    let fileInfo: SlideFileInfo
 
     lazy var id: Foundation.UUID = {
         let fingerprint = """
@@ -36,12 +42,6 @@ final class CSP: Slide {
 
         return Data(fingerprint.utf8).hashUUID
     }()
-    var mainPath: String
-    var createTime: Date
-    var modifyTime: Date
-    var name: String
-    var format: String
-    var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
     let tierCount: Int = 1
@@ -59,13 +59,7 @@ final class CSP: Slide {
         guard let fp = dll.getCspReader?(path.filePath.oemCString) else { return nil }
         cspReader = fp
 
-        mainPath = path.filePath
-        let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-        createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
-        modifyTime = rv?.contentModificationDate ?? Date(timeIntervalSince1970: 0)
-        name = path.deletingPathExtension().lastPathComponent
-        format = path.pathExtension.uppercased()
-        dataSize = path.fileSize
+        fileInfo = SlideFileInfo(url: path)
 
         guard dll.cspReadScannerInfo?(cspReader, &cspScannerInfo) == 0 else { return nil }
         guard dll.cspReadConfig?(cspReader, &cspConfig) == 0 else { return nil }

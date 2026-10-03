@@ -4,14 +4,18 @@ import LibJPEGTurbo
 import LibTIFF
 import RsFoundation
 
-struct OMETIFFPreview: SlidePreview {
-    let path: URL
+struct OMETIFFPreview: InternalSlidePreview {
+    let fileInfo: SlideFileInfo
+
+    init(path: URL) {
+        fileInfo = SlideFileInfo(url: path)
+    }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
         #if os(Windows)
-            let tiff = TIFFOpenW(path.path.wideString, "r")
+            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "r")
         #else
-            let tiff = TIFFOpen(path.path, "r")
+            let tiff = TIFFOpen(fileInfo.mainPath, "r")
         #endif
         guard tiff != nil else { return nil }
         defer {
@@ -31,7 +35,7 @@ struct OMETIFFPreview: SlidePreview {
     }
 }
 
-final class OMETIFF: Slide {
+final class OMETIFF: InternalSlide {
     private enum LayerData {
         case tile(UInt32, UInt64?)
         case strip(UInt32, UInt64, [UInt32]?, UInt32, UInt32)
@@ -43,13 +47,9 @@ final class OMETIFF: Slide {
     private var labelDir: UInt32 = 0
     private let quality = 85
 
+    let fileInfo: SlideFileInfo
+
     var id: UUID = UUID()
-    var mainPath: String
-    var createTime: Date
-    var modifyTime: Date
-    var name: String
-    var format: String
-    var dataSize: Int = -1
     var scanObjective = 0
     var scanScale = 0.0
     let tierCount: Int = 1
@@ -71,22 +71,7 @@ final class OMETIFF: Slide {
         #endif
         self.tiff = tiff
 
-        mainPath = path.path
-        let rv = try? path.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-        createTime = rv?.creationDate ?? Date(timeIntervalSince1970: 0)
-        modifyTime = rv?.contentModificationDate ?? Date(timeIntervalSince1970: 0)
-        name = path.lastPathComponent
-        if name.hasSuffix(".ome.tif") {
-            name.removeLast(8)
-            format = "OME.TIF"
-        } else if name.hasSuffix(".ome.tiff") {
-            name.removeLast(9)
-            format = "OME.TIFF"
-        } else {
-            name = path.deletingPathExtension().lastPathComponent
-            format = path.pathExtension.uppercased()
-        }
-        dataSize = path.fileSize
+        fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
 

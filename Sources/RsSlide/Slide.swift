@@ -91,10 +91,10 @@ public struct LayerPixelData {
 public protocol Slide {
     var id: UUID { get }
     var mainPath: String { get }
-    var createTime: Date { get }
-    var modifyTime: Date { get }
     var name: String { get }
     var format: String { get }
+    var createTime: Date { get }
+    var modifyTime: Date { get }
     var dataSize: Int { get }
     var scanObjective: Int { get }
     var scanScale: Double { get }

@@ -2,14 +2,18 @@ import Foundation
 import LibTIFF
 import RsFoundation
 
-struct QPTIFFPreview: SlidePreview {
-    let path: URL
+struct QPTIFFPreview: InternalSlidePreview {
+    let fileInfo: SlideFileInfo
+
+    init(path: URL) {
+        fileInfo = SlideFileInfo(url: path)
+    }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
         #if os(Windows)
-            let tiff = TIFFOpenW(path.path.wideString, "rh")
+            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh")
         #else
-            let tiff = TIFFOpen(path.path, "rh")
+            let tiff = TIFFOpen(fileInfo.mainPath, "rh")
         #endif
         guard tiff != nil else { return nil }
         defer {
