@@ -1,4 +1,5 @@
 import Foundation
+import RsFoundation
 
 /// File-level metadata snapshot, read from disk once and shared by previews and slides.
 ///
@@ -17,7 +18,7 @@ struct SlideFileInfo {
 
     init(url: URL) {
         mainURL = url
-        mainPath = url.path
+        mainPath = url.filePath
 
         let fileName = url.lastPathComponent
         let fileNameLower = fileName.lowercased()
@@ -53,6 +54,7 @@ protocol InternalSlidePreview: SlidePreview {
 extension InternalSlidePreview {
     var createTime: Date { fileInfo.createTime }
     var name: String { fileInfo.name }
+    var format: String { fileInfo.format }
     var dataSize: Int { fileInfo.dataSize }
 }
 
