@@ -1,4 +1,5 @@
 import Foundation
+import LibJPEGTurbo
 import LibTIFF
 import RsSlide
 import Testing
@@ -62,5 +63,24 @@ struct SlidePreviewTests {
                 filePath: "preview.jpg",
                 directoryHint: .notDirectory,
                 relativeTo: BASE))
+
+        let (w, h) = tjDecompressHeader([UInt8](img))
+        for (degrees, swapsSides) in [(90, true), (180, false), (270, true)] {
+            let rotated = sp.fetchMacroJPEGImage(rotationDegrees: degrees)
+            #expect(rotated != nil)
+            guard let rotated else { continue }
+            #expect(Data(rotated).isJPEG)
+            let (rw, rh) = tjDecompressHeader(rotated)
+            #expect(swapsSides ? (rw, rh) == (h, w) : (rw, rh) == (w, h))
+
+            if degrees == 90 {
+                try! Data(rotated).write(
+                    to: URL(
+                        filePath: "preview_rot90.jpg",
+                        directoryHint: .notDirectory,
+                        relativeTo: BASE))
+            }
+        }
+        #expect(sp.fetchMacroJPEGImage(rotationDegrees: 45) == nil)
     }
 }
