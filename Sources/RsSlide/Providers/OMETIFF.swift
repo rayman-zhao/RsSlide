@@ -54,6 +54,7 @@ final class OMETIFF: InternalSlide {
     var scanScale = 0.0
     let tierCount: Int = 1
     let tierSpacing: Double = 0.0
+    let channelCount: Int = 1
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
     let extendedXML: String = ""

@@ -104,6 +104,7 @@ public protocol Slide {
     var scanScale: Double { get }
     var tierCount: Int { get }
     var tierSpacing: Double { get }
+    var channelCount: Int { get }
     var tileTrait: TileTrait { get }
     var layerZoom: Int { get }
     var extendedXML: String { get }
