@@ -59,6 +59,10 @@ public struct TileTrait: CustomStringConvertible {
         switch (compression, pixelFormat, sampleBits) {
         case (.jpeg, .rgb, 8):
             return "JPEG_RGB_24bits"
+        case (.jpeg, .gray, 8):
+            return "JPEG_GRAY_8bits"
+        case (.png, .gray, 8):
+            return "PNG_GRAY_8bits"
         default:
             fatalError()
         }
