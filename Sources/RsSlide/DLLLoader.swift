@@ -9,7 +9,7 @@ final class DLLLoader {
         var path: String = name
         if let url = Bundle.main.url(
             forResource: name, withExtension: ".dll",
-            subdirectory: "Ruslan_Ruslan.resources/CloudExec/lib/\(folder)")
+            subdirectory: "Ruslan_Ruslan.bundle/CloudExec/lib/\(folder)")
         {  // For Ruslan project
             path = url.filePath
         } else if let url = Bundle.main.url(
