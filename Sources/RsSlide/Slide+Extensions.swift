@@ -44,7 +44,7 @@ extension Slide {
 
     func fetchVirtualTileImage(for coord: TileCoordinate) -> [UInt8]? {
         guard tileTrait.compression == .jpeg else { return nil }
-        guard let from = topLayerPixelData else { return nil }
+        guard let from = topLayerPixelData[coord.channel] else { return nil }
         guard coord.layer >= from.layer else { return nil }
 
         let scale = Int(pow(Double(layerZoom), Double(coord.layer - from.layer)))
@@ -109,12 +109,13 @@ extension Slide {
             height: from.height)
     }
 
-    func fetchPixelData(at layer: Int) -> LayerPixelData? {
+    func fetchPixelData(at layer: Int, channel: Int = 0) -> LayerPixelData? {
         guard 0..<layerImageSize.count ~= layer else { return nil }
 
-        let from = TileCoordinate(layer: layer, row: 0, col: 0)
+        let from = TileCoordinate(layer: layer, row: 0, col: 0, channel: channel)
         let to = TileCoordinate(
-            layer: layer, row: layerTileSize[layer].r - 1, col: layerTileSize[layer].c - 1)
+            layer: layer, row: layerTileSize[layer].r - 1, col: layerTileSize[layer].c - 1,
+            channel: channel)
         return fetchPixelData(from: from, to: to)
     }
 

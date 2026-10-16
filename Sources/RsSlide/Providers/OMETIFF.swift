@@ -62,7 +62,7 @@ final class OMETIFF: InternalSlide {
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var topLayerPixelData = fetchPixelData(at: layerTileSize.count - 1)
+    lazy var topLayerPixelData = [fetchPixelData(at: layerTileSize.count - 1)]
 
     init?(path: URL) {
         #if os(Windows)

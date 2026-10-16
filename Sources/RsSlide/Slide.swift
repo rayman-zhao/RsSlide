@@ -117,7 +117,7 @@ public protocol Slide {
     /// - Important: This is an implementation detail used internally by
     ///   `fetchVirtualTileImage`, `fetchThumbnailJPEGImage`, and `saveAsSVS`.
     ///   Do not access directly; treat it as if it were `internal`.
-    var topLayerPixelData: LayerPixelData? { get }
+    var topLayerPixelData: [LayerPixelData?] { get }
 
     func fetchLabelJPEGImage() -> [UInt8]?
     func fetchMacroJPEGImage() -> [UInt8]?
