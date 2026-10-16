@@ -1,7 +1,7 @@
 import Foundation
-import Testing
-import RsSlide
 import RsFoundation
+import RsSlide
+import Testing
 
 @Suite
 struct TraitTests {
@@ -31,7 +31,7 @@ struct TraitTests {
         }
         let trait = try #require(url).slideKind
 
-        switch st { // SlideKind no need to be sendable only for parameter-testing.
+        switch st {  // SlideKind no need to be sendable only for parameter-testing.
         case "notSupported":
             #expect(trait == .notSupported)
         case "isSlide":
@@ -39,11 +39,11 @@ struct TraitTests {
             if case .slide(_) = trait {
                 isSlide = true
             }
-        #if MORE_PROVIDERS_AVAILABLE
-            #expect(isSlide)
-        #else
-            #expect(more || isSlide)
-        #endif
+            #if MORE_PROVIDERS_AVAILABLE
+                #expect(isSlide)
+            #else
+                #expect(more || isSlide)
+            #endif
         case "isGenericFile":
             #expect(trait == .genericFile)
         case "isMetadataFolder":
@@ -54,24 +54,23 @@ struct TraitTests {
             fatalError()
         }
     }
-    
+
     @Test
     func listFolder() async throws {
-        let enumerator = FileManager.default.enumerator2(
+        let enumerator = FileManager.default.enumerator(
             at: BASE,
             includingPropertiesForKeys: [.nameKey, .isDirectoryKey],
             options: .skipsHiddenFiles
         )!
         var slides: [String] = []
-         
+
         while let file = enumerator.nextObject() as? URL {
-            switch file.slideKind{
+            switch file.slideKind {
             case .slide:
                 if file.hasDirectoryPath {
                     slides.append("*\(file.lastPathComponent)")
                     enumerator.skipDescendants()
-                }
-                else {
+                } else {
                     slides.append("#\(file.lastPathComponent)")
                 }
             case .metadataFolder:
@@ -83,10 +82,10 @@ struct TraitTests {
                 break
             }
         }
-        
+
         for (i, s) in slides.enumerated() {
             print("#\(i + 1) \(s)")
         }
-        #expect(slides.count > 0) // 应该在 UI 中显示出来的文件和文件夹。
+        #expect(slides.count > 0)  // 应该在 UI 中显示出来的文件和文件夹。
     }
 }
