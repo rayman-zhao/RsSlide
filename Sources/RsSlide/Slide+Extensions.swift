@@ -11,6 +11,7 @@ enum TileCoordinateValidation {
 extension Slide {
     func validate(_ coordinate: TileCoordinate) -> TileCoordinateValidation {
         guard 0..<tierCount ~= coordinate.tier else { return .invalid }
+        guard 0..<channelCount ~= coordinate.channel else { return .invalid }
 
         if 0..<layerTileSize.count ~= coordinate.layer {
             let rows = layerTileSize[coordinate.layer].r
@@ -35,12 +36,14 @@ extension Slide {
     }
 
     func fetchTrimmedTileImage(for coord: TileCoordinate) -> [UInt8]? {
+        guard tileTrait.compression == .jpeg else { return nil }
         guard let pxdata = fetchPixelData(from: coord, to: coord) else { return nil }
 
         return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
     }
 
     func fetchVirtualTileImage(for coord: TileCoordinate) -> [UInt8]? {
+        guard tileTrait.compression == .jpeg else { return nil }
         guard let from = topLayerPixelData else { return nil }
         guard coord.layer >= from.layer else { return nil }
 
@@ -116,14 +119,14 @@ extension Slide {
     }
 
     func fetchPixelData(from: TileCoordinate, to: TileCoordinate) -> LayerPixelData? {
-        guard case .valid = validate(from), case .valid = validate(to) else { return nil }
-        let pixelLayer = from.layer
-        guard pixelLayer == to.layer else { return nil }
-        guard from.row <= to.row && from.col <= to.col else { return nil }
         guard tileTrait.sampleBits == 8 && tileTrait.compression == .jpeg else {
             log.error("Failed to fetch tile pixels. Only support JPEG format slide file.")
             return nil
         }
+        guard case .valid = validate(from), case .valid = validate(to) else { return nil }
+        let pixelLayer = from.layer
+        guard pixelLayer == to.layer else { return nil }
+        guard from.row <= to.row && from.col <= to.col else { return nil }
 
         let tileWidth = tileTrait.size.w
         let tileHeight = tileTrait.size.h
@@ -149,7 +152,8 @@ extension Slide {
 
         for row in from.row...to.row {
             for col in from.col...to.col {
-                let coord = TileCoordinate(layer: pixelLayer, row: row, col: col)
+                let coord = TileCoordinate(
+                    layer: pixelLayer, row: row, col: col, tier: from.tier, channel: from.channel)
                 guard let img = fetchTileRawImage(for: coord) else { continue }
 
                 tj3Decompress8(
