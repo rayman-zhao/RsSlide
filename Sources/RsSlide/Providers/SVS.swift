@@ -78,6 +78,9 @@ final class SVS: InternalSlide {
         fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
+        guard layerImageSize.count > 0 && tileTrait.size.w > 0 && tileTrait.size.h > 0 else {
+            return nil
+        }
 
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.

@@ -100,6 +100,10 @@ struct SlideTests {
                 "OMETIFF/Leica-1.ome.tiff", "db30c0bc-b59a-425e-9e2c-bf9bb1dc2cb5", "Leica-1",
                 "OME.TIFF", false, true, false
             ),
+            // (
+            //     "260808-6.tif", "db30c0bc-b59a-425e-9e2c-bf9bb1dc2cb5", "260808-6", // Stripped TIF, init nil.
+            //     "TIF", false, false, false
+            // )
         ])
     func slideValid(
         _ fn: String, _ sid: String, _ name: String, _ fmt: String, _ label: Bool, _ macro: Bool,
