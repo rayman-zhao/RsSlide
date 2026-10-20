@@ -167,6 +167,8 @@ final class OMETIFF: InternalSlide {
             let xml = try? XMLDocument(xmlString: String(cString: desc))
         {
             xml.forEachElement { parent, name, attribute, value in
+                guard let value else { return }
+
                 if parent == "OME" && name == "OME" && attribute == "UUID",
                     let v = UUID(uuidString: String(value.dropFirst("urn:uuid:".count)))
                 {
