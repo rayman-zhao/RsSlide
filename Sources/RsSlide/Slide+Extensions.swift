@@ -44,7 +44,7 @@ extension Slide {
             return tjCompress(
                 pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
         case .png:
-            return pngCompress(
+            return pngCompress2(
                 pxdata.pixels, tileTrait.pngPF, pxdata.width, pxdata.height, pxdata.pitch)
         default:
             return nil
@@ -102,7 +102,7 @@ extension Slide {
         case .jpeg:
             return tjCompress(pixels, tileTrait.tjPF, virtualTileWidth, virtualTileHeight)
         case .png:
-            return pngCompress(pixels, tileTrait.pngPF, virtualTileWidth, virtualTileHeight)
+            return pngCompress2(pixels, tileTrait.pngPF, virtualTileWidth, virtualTileHeight)
         default:
             return nil
         }

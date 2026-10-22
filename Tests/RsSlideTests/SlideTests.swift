@@ -176,7 +176,12 @@ struct SlideTests {
             // "QPTIFF/02914056_20230103124040.qptiff",
             // "QPTIFF/02914056_20230103131001.qptiff",
             // "QPTIFF/derm-FITC_20231005163648.qptiff",
-            "QPTIFF/胰岛-绿橙红-01-EDF.qptiff"
+            // "QPTIFF/胰岛-绿橙红-01-EDF.qptiff",
+            // "QPTIFF/bmp-qptiff.qptiff",
+            // "QPTIFF/20260513152446-24.qptiff",
+            // "QPTIFF/202404171225-3fl.qptiff",
+            // "QPTIFF/20240417-4FL.qptiff",
+            "QPTIFF/_20250228132506.qptiff"
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
