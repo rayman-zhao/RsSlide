@@ -16,6 +16,7 @@ extension Slide {
             try convert(toSVS: url)
         } else if fn.hasSuffix(".ome.tif") || fn.hasSuffix(".ome.tiff") {
             // try convert(toOMETIFF: url)
+            fatalError()
         } else {
             throw SlideExportError.unsupportedExportFormat(url: url)
         }
