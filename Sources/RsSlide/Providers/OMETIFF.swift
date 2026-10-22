@@ -75,6 +75,9 @@ final class OMETIFF: InternalSlide {
         fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
+        guard layerImageSize.count > 0 && tileTrait.size.w > 0 && tileTrait.size.h > 0 else {
+            return nil
+        }
 
         if layerTileSize.count > 1 {
             // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
@@ -116,6 +119,7 @@ final class OMETIFF: InternalSlide {
                 let bufSize = pixelCount * tileTrait.pixelBytes
                 var buf = [UInt8](repeating: 0, count: bufSize)
                 let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
+                guard tileSize > 0 else { return nil }
                 return Array(buf[..<tileSize])
             }
         case .strip(let dirnum, let diroffset, var buf, let w, let h):

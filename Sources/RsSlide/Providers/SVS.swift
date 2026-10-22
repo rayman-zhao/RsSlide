@@ -136,6 +136,7 @@ final class SVS: InternalSlide {
             return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h, 0, quality)
         } else {
             let tileSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(bufSize)))
+            guard tileSize > 0 else { return nil }
             return Array(buf[..<tileSize])
         }
     }

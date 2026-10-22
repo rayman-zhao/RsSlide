@@ -18,6 +18,8 @@ extension Slide {
     }
 
     public func fetchThumbnailJPEGImage(maxSize: Int = 512, channel: Int = 0) -> [UInt8]? {
+        guard 0..<channelTrait.count ~= channel else { return nil }
+
         // Find the most suitable layer for thumbnail generation.
         var layer = layerImageSize.count - 1
         while layer > 0 && layerImageSize[layer].w < maxSize && layerImageSize[layer].h < maxSize {
