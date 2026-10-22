@@ -1,6 +1,7 @@
 import Foundation
 import FoundationXML
 import LibJPEGTurbo
+import LibPNG
 import LibTIFF
 import RsFoundation
 
@@ -43,43 +44,43 @@ private struct QPTIFFBand {
     var name = ""
     var color = (r: 0, g: 0, b: 0)
     var wavelength = 0
-    var directories: [UInt32] = []
+    var layerDir: [UInt32] = []
 }
 
 final class QPTIFF: InternalSlide {
     private let tiff: OpaquePointer
     private var bands: [QPTIFFBand] = []
-    private var bandIndexByName: [String: Int] = [:]
+    // private var bandIndexByName: [String: Int] = [:]
+
+    // TIFF directory indices per band, exposed for tests and debugging.
+    // var bandDirectories: [[UInt32]] { bands.map(\.directories) }
+
+    private var tileCompression = COMPRESSION_JPEG
     private var macroDir: UInt32 = 0
     private var labelDir: UInt32 = 0
     private var imageDesc = ""
-    private var quality = 85
+    private var imageWidth = 0
+    private var imageHeight = 0
+    private let quality = 85
 
     let fileInfo: SlideFileInfo
 
-    lazy var id: UUID = {
-        let fingerprint = """
-            dataSize: \(dataSize)
-            imageDesc: \(imageDesc)
-            layers: \(layerImageSize)
-            tiers: \(bands.count)
-            """
-
-        return Data(fingerprint.utf8).hashUUID
-    }()
+    var id: UUID = .zero
     var scanObjective = 0
     var scanScale = 0.0
-    var tierCount: Int { bands.count }
+    let tierCount: Int = 1
     let tierSpacing: Double = 0.0
-    var channelCount: Int = 1
+    var channelCount: Int = 0
     var tileTrait = TileTrait(width: 0, height: 0)
     var layerZoom = 2
-    var extendedXML = ""
+    let extendedXML = ""
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
 
-    lazy var topLayerPixelData = [fetchPixelData(at: layerTileSize.count - 1)]
+    lazy var topLayerPixelData = (0..<channelCount).map { i in
+        fetchPixelData(at: layerTileSize.count - 1, channel: i)
+    }
 
     init?(path: URL) {
         #if os(Windows)
@@ -92,28 +93,28 @@ final class QPTIFF: InternalSlide {
         fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
-        importLayers()
+        guard bands.count > 0 && layerImageSize.count > 0 && tileTrait.size.w > 0 else {
+            return nil
+        }
 
-        guard bands.count > 0, tileTrait.size.w > 0, !layerImageSize.isEmpty else { return nil }
-
+        if id == .zero {
+            let fingerprint = """
+                dataSize: \(dataSize)
+                imageDesc: \(imageDesc)
+                layers: \(layerImageSize)
+                channels: \(bands.count)
+                """
+            id = Data(fingerprint.utf8).hashUUID
+        }
+        channelCount = bands.count
         if layerTileSize.count > 1 {
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
-
-        // Same fallback chain as the old C++ reader.
-        if scanScale == 0.0 {
-            scanScale = 0.25 * 40 / Double(max(scanObjective, 1))
-        }
-
-        extendedXML = buildScanProfileXML()
     }
 
     deinit {
         TIFFClose(tiff)
     }
-
-    /// TIFF directory indices per band, exposed for tests and debugging.
-    var bandDirectories: [[UInt32]] { bands.map(\.directories) }
 
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
@@ -127,30 +128,52 @@ final class QPTIFF: InternalSlide {
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
         guard case .valid = validate(coord) else { return nil }
-        guard coord.tier < bands.count else { return nil }
-        let directories = bands[coord.tier].directories
-        guard coord.layer < directories.count else { return nil }
-        guard TIFFSetDirectory(tiff, directories[coord.layer]) else { return nil }
+        guard TIFFSetDirectory(tiff, bands[coord.channel].layerDir[coord.layer]) else { return nil }
 
         let tileX = UInt32(coord.col * tileTrait.size.w)
         let tileY = UInt32(coord.row * tileTrait.size.h)
         let tid = TIFFComputeTile(tiff, tileX, tileY, 0, 0)
-
-        // The JPEG tiles reference shared JPEGTables and Q-Scan6 writes LZW, so the raw
-        // bytes are never standalone images. Decode via libtiff and re-encode mono JPEG.
         let bufSize = tileTrait.maxBytes
         var buf = [UInt8](repeating: 0, count: bufSize)
-        guard TIFFReadEncodedTile(tiff, tid, &buf, tmsize_t(bufSize)) > 0 else { return nil }
-        return tjCompress(buf, tileTrait.tjPF, tileTrait.size.w, tileTrait.size.h, 0, quality)
+
+        if tileCompression == COMPRESSION_JPEG {
+            let tileSize = buf.withUnsafeMutableBytes {
+                return Int(TIFFReadRawTile(tiff, tid, $0.baseAddress, tmsize_t(bufSize)))
+            }
+            guard tileSize > 0 else { return nil }
+            buf.removeSubrange(tileSize...)
+            return buf
+        } else {
+            let tileSize = buf.withUnsafeMutableBytes {
+                return TIFFReadEncodedTile(tiff, tid, $0.baseAddress, tmsize_t(bufSize))
+            }
+            guard tileSize > 0 else { return nil }
+            return pngCompress2(buf, .gray, tileTrait.size.w, tileTrait.size.h)
+        }
     }
 
     private func importDirectories() {
         var mpp = -1.0
 
         while TIFFReadDirectory(tiff) == 1 {
-            let dir = TIFFCurrentDirectory(tiff)
+            guard
+                let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION)
+            else { continue }
+            let text = String(cString: desc)
+            if imageDesc.isEmpty {
+                imageDesc = text
+            }
+            //  Document labelled UTF-16 but has UTF-8 content
+            if let xml = try? XMLDocument(
+                xmlString: text.replacingOccurrences(
+                    of: "<?xml version=\"1.0\" encoding=\"utf-16\"?>",
+                    with: "<?xml version=\"1.0\" encoding=\"utf-8\"?>"),
+                options: .documentTidyXML)
+            {
+                importMetadata(from: xml)
+            }
 
-            if mpp < 0,
+            if scanScale == 0.0 && mpp < 0,
                 let res: Float = TIFFGetField(tiff, TIFFTAG_XRESOLUTION),
                 let unit: UInt16 = TIFFGetField(tiff, TIFFTAG_RESOLUTIONUNIT)
             {
@@ -160,152 +183,114 @@ final class QPTIFF: InternalSlide {
                     mpp = Double(1 / res * 25.4 * 1000)
                 }
             }
-
-            guard
-                let desc: UnsafeMutablePointer<CChar> = TIFFGetField(
-                    tiff, TIFFTAG_IMAGEDESCRIPTION),
-                let text = Self.decodeImageDescription(desc)
-            else { continue }
-
-            if imageDesc.isEmpty { imageDesc = text }
-            guard let xml = try? XMLDocument(xmlString: Self.normalizeXML(text)) else { continue }
-
-            var elements: [(parent: String, name: String, text: String)] = []
-            if let root = xml.rootElement() {
-                Self.collectElements(root, parent: "", into: &elements)
-            }
-
-            var lastBand = -1
-            for e in elements {
-                switch e.name.lowercased() {
-                case "imagetype":
-                    switch e.text.lowercased() {
-                    case "fullresolution":
-                        if tileTrait.size.w == 0 { importTileTrait() }
-                    case "overview":
-                        if macroDir == 0 { macroDir = dir }
-                    case "label":
-                        if labelDir == 0 { labelDir = dir }
-                    default:
-                        break  // Thumbnail, ReducedResolution belongs to its band directories.
-                    }
-                case "objective" where scanObjective == 0:
-                    scanObjective = Int(e.text.prefix(while: \.isNumber)) ?? 0
-                case "pixelsizemicrons" where scanScale == 0.0:
-                    scanScale = Double(e.text) ?? 0.0
-                case "name":
-                    if let idx = bandIndexByName[e.text] {
-                        lastBand = idx
-                    } else {
-                        bands.append(QPTIFFBand(name: e.text))
-                        lastBand = bands.count - 1
-                        bandIndexByName[e.text] = lastBand
-                    }
-                    // Only the top-level <Name> of PerkinElmer-QPI-ImageDescription
-                    // marks this directory as a pyramid level of the band.
-                    if e.parent.lowercased().contains("imagedescription") {
-                        bands[lastBand].directories.append(dir)
-                    }
-                case "color" where lastBand >= 0:
-                    let parts = e.text.split(separator: ",").compactMap {
-                        Int($0.trimmingCharacters(in: .whitespaces))
-                    }
-                    if parts.count == 3 {
-                        bands[lastBand].color = (parts[0], parts[1], parts[2])
-                    }
-                case "homewavelength" where lastBand >= 0:
-                    bands[lastBand].wavelength = Int(e.text) ?? 0
-                default:
-                    break
-                }
-            }
         }
 
-        if scanScale == 0.0 && mpp > 0 {
-            scanScale = mpp
+        importLayers()
+        // EasyScan 有很多不同的版本，输出校准值在不同的地方。
+        if scanScale == 0.0 {
+            scanScale = mpp > 0 ? mpp : 0.25 * 40 / Double(max(scanObjective, 1))
         }
     }
 
-    private func importTileTrait() {
-        if let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
-            let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
-        {
-            tileTrait = TileTrait(
-                width: Int(tw), height: Int(th), pixelFormat: .gray, sampleBits: 8,
-                backgroundColorRGB: 0)
+    private func importMetadata(from xml: XMLDocument) {
+        let dir = TIFFCurrentDirectory(tiff)
+        var lastBand = -1
+
+        xml.forEachElement { parent, name, _, value in
+            guard let value else { return }
+
+            switch name.lowercased() {
+            case "imagetype":
+                switch value.lowercased() {
+                case "fullresolution" where imageWidth == 0 && imageHeight == 0:
+                    if let compression: UInt16 = TIFFGetField(tiff, TIFFTAG_COMPRESSION),
+                        let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
+                        let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
+                    {
+                        tileCompression = Int32(compression)
+                        tileTrait = TileTrait(
+                            width: Int(tw), height: Int(th),
+                            compression: tileCompression == COMPRESSION_JPEG ? .jpeg : .png,
+                            pixelFormat: .gray, sampleBits: 8,
+                            backgroundColorRGB: 0)
+                    }
+                    if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
+                        let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
+                    {
+                        imageWidth = Int(w)
+                        imageHeight = Int(h)
+                    }
+                case "overview" where macroDir == 0:
+                    macroDir = dir
+                case "label" where labelDir == 0:
+                    labelDir = dir
+                default:
+                    break  // Thumbnail, ReducedResolution belongs to its band directories.
+                }
+            case "identifier" where id == .zero:
+                if let v = UUID(uuidString: value) {
+                    id = v
+                }
+            case "objective" where scanObjective == 0:
+                // like 40X, 2.5X
+                if let num = value.firstMatch(of: /^[\d.]+/)?.output,
+                    let v = Int(num)
+                {
+                    scanObjective = v
+                }
+            case "pixelsizemicrons" where scanScale == 0.0:
+                if let v = Double(value) {
+                    scanScale = v
+                }
+            case "name":
+                if let idx = bands.firstIndex(where: { $0.name == value }) {
+                    lastBand = idx
+                } else {
+                    bands.append(QPTIFFBand(name: value))
+                    lastBand = bands.count - 1
+                }
+                // Only the top-level <Name> of PerkinElmer-QPI-ImageDescription
+                // marks this directory as a pyramid level of the band.
+                if parent.lowercased().contains("imagedescription") {
+                    bands[lastBand].layerDir.append(dir)
+                }
+            case "color" where lastBand >= 0:
+                let parts = value.split(separator: ",").compactMap { Int($0) }
+                if parts.count == 3 {
+                    bands[lastBand].color = (parts[0], parts[1], parts[2])
+                }
+            case "homewavelength" where lastBand >= 0:
+                if let v = Int(value) {
+                    bands[lastBand].wavelength = v
+                }
+            default:
+                break
+            }
         }
     }
 
     private func importLayers() {
-        guard let levelCount = bands.map(\.directories.count).min(), levelCount > 0 else { return }
+        guard let levelCount = bands.map(\.layerDir.count).min(), levelCount > 0 else { return }
 
-        // Defensive trim when a corrupt file gives some bands fewer levels than others.
-        for i in bands.indices where bands[i].directories.count > levelCount {
-            bands[i].directories.removeSubrange(levelCount...)
-        }
+        var (w, h) = (imageWidth, imageHeight)
+        let (tw, th) = tileTrait.size
 
-        for level in 0..<levelCount {
-            guard TIFFSetDirectory(tiff, bands[0].directories[level]) else { continue }
-            guard let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
-                let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
-            else { continue }
-
-            layerImageSize.append((Int(w), Int(h)))
+        for _ in 0..<levelCount {
+            layerImageSize.append((w, h))
             layerTileSize.append(
                 (
-                    Int(ceil(Double(h) / Double(tileTrait.size.h))),
-                    Int(ceil(Double(w) / Double(tileTrait.size.w)))
-                ))
-        }
-    }
+                    Int(
+                        ceil(Double(h) / Double(th))
+                    ),
+                    Int(
+                        ceil(Double(w) / Double(tw))
+                    )
+                )
+            )
 
-    private func buildScanProfileXML() -> String {
-        var xml = "<ScanProfile>\n\t<Bands>\n"
-        for band in bands {
-            let argb = 0xFF00_0000 | band.color.r << 16 | band.color.g << 8 | band.color.b
-            xml += "\t\t<Band>\n"
-            xml += "\t\t\t<Name>\(band.name)</Name>\n"
-            xml += "\t\t\t<Color>\(String(argb))</Color>\n"
-            xml += "\t\t\t<HomeWavelength>\(band.wavelength)</HomeWavelength>\n"
-            xml += "\t\t</Band>\n"
+            w /= 2
+            h /= 2
         }
-        xml += "\t</Bands>\n</ScanProfile>"
-        return xml
-    }
 
-    /// The QPTIFF vendors declare `encoding="utf-16"` but almost always write ASCII,
-    /// so the raw bytes decide the real encoding, not the declaration.
-    private static func decodeImageDescription(_ desc: UnsafeMutablePointer<CChar>) -> String? {
-        let b0 = UInt8(bitPattern: desc[0])
-        let b1 = UInt8(bitPattern: desc[1])
-        if (b0 == 0xFF && b1 == 0xFE) || (b0 == 0xFE && b1 == 0xFF) {
-            var length = 2
-            while length + 1 < (1 << 20) && !(desc[length] == 0 && desc[length + 1] == 0) {
-                length += 2
-            }
-            let data = Data(bytes: desc, count: length)
-            return String(data: data, encoding: .utf16)
-                ?? String(data: data, encoding: .utf16LittleEndian)
-        }
-        return String(validatingCString: desc)
-    }
-
-    /// Windows FoundationXML throws on any declared encoding other than utf-8.
-    private static func normalizeXML(_ xml: String) -> String {
-        xml.replacingOccurrences(
-            of: #"<\?xml[^>]*\?>"#,
-            with: "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
-            options: .regularExpression)
-    }
-
-    private static func collectElements(
-        _ element: XMLElement, parent: String,
-        into output: inout [(parent: String, name: String, text: String)]
-    ) {
-        let name = element.name ?? ""
-        output.append((parent, name, element.stringValue ?? ""))
-        for case let child as XMLElement in element.children ?? [] {
-            collectElements(child, parent: name, into: &output)
-        }
     }
 }

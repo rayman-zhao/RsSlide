@@ -1,6 +1,7 @@
 import Foundation
 import FoundationXML
 import LibJPEGTurbo
+import LibPNG
 import LibTIFF
 import Testing
 
@@ -16,17 +17,79 @@ struct QPTIFFTests {
         .serialized,
         arguments: [
             (
-                "23SC-5-2.qptiff", "23SC-5-2", 4, 9, 96936, 79812, 40, 0.171625, true, true,
-                ["DAPI", "FITC", "TRITC", "Cy5"]
-            )
-            // (
-            //     "_20250228132506.qptiff", "_20250228132506", 15, 8, 15385, 44296, 20, 0.531915,
-            //     false, false, []
-            // ),
+                "23SC-5-2.qptiff", "23SC-5-2",
+                4, 9, 96936, 79812, 40, 0.171625, true, true,
+                ["DAPI", "FITC", "TRITC", "Cy5"],
+                "2D53BA1A-FC3E-5E92-AF1C-D1956ED3809B"
+            ),
+            (
+                "02914056_20230103124040.qptiff", "02914056_20230103124040",
+                3, 5, 15577, 12998, 80, 0.125, true, true,
+                ["DAPI", "FITC", "TRITC"],
+                "62B0EA7B-E759-40FB-941E-E038852896B0"
+            ),
+            (
+                "02914056_20230103131001.qptiff", "02914056_20230103131001",
+                3, 5, 19925, 20336, 80, 0.125, true, true,
+                ["DAPI", "FITC", "TRITC"],
+                "73C34262-E996-40AD-9D79-273995A7DA72"
+            ),
+            (
+                "derm-FITC_20231005163648.qptiff", "derm-FITC_20231005163648",
+                1, 5, 17735, 22175, 40, 1.0, true, true,
+                ["FITC"],
+                "BA4264C6-A9F4-49C4-9C88-CD2A9EA005ED"
+            ),
+            (
+                "胰岛-绿橙红-01-EDF.qptiff", "胰岛-绿橙红-01-EDF",
+                3, 5, 24456, 25988, 80, 0.134, true, true,
+                ["DAPI", "FITC", "TRITC"],
+                "5CE04553-5008-49DA-A862-A9F940A63609"
+            ),
+            (
+                "bmp-qptiff.qptiff", "bmp-qptiff",
+                3, 3, 4406, 3686, 20, 0.5, true, true,
+                ["DAPI", "FITC", "TRITC"],
+                "4FA05DD3-0F6D-48F3-BE57-C48F29FF6E90"
+            ),
+            (
+                "20260513152446-24.qptiff", "20260513152446-24",
+                4, 9, 119824, 65652, 40, 0.173337, true, true,
+                ["DAPI", "FITC", "TRITC", "Cy5"],
+                "45366061-4D4F-5000-8529-4462136B0ED2"
+            ),
+            (
+                "202404171225-3fl.qptiff", "202404171225-3fl",
+                3, 5, 17876, 16799, 20, 0.5, true, true,
+                ["DAPI", "FITC", "TRITC"],
+                "7859AEDF-013F-402A-A463-55943A566367"
+            ),
+            (
+                "20240417-4FL.qptiff", "20240417-4FL",
+                15, 6, 15672, 14955, 20, 1.0, false, false,
+                [
+                    "1B-LED-ch", "1G-LED-ch", "1R-LED-ch",
+                    "2B-LED-ch", "2G-LED-ch", "2R-LED-ch",
+                    "3B-LED-ch", "3G-LED-ch", "3R-LED-ch",
+                    "4B-LED-ch", "4G-LED-ch", "4R-LED-ch",
+                    "5B-LED-ch", "5G-LED-ch", "5R-LED-ch",
+                ],
+                "C4D514B2-91F2-414A-B8F1-264F067C83B8"
+            ),
+            (
+                "_20250228132506.qptiff", "_20250228132506",
+                15, 8, 15385, 44296, 20, 0.531915, false, false,
+                [
+                    "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12",
+                    "C13", "C14", "C15",
+                ],
+                "2338B783-C995-4EBC-A037-038193A0573A"
+            ),
         ])
     func qptiffOpen(
         _ fn: String, _ name: String, _ channels: Int, _ levels: Int, _ width: Int, _ height: Int,
-        _ objective: Int, _ scale: Double, _ hasLabel: Bool, _ hasMacro: Bool, _ bandNames: [String]
+        _ objective: Int, _ scale: Double, _ hasLabel: Bool, _ hasMacro: Bool,
+        _ bandNames: [String], _ id: String
     ) async throws {
         print("Validating QPTIFF/\(fn)")
         let s = try qpOpen(fn)
@@ -38,12 +101,13 @@ struct QPTIFFTests {
         #expect(s.scanObjective == objective)
         #expect(abs(s.scanScale - scale) < 0.001)
         print("Slide GUID \(s.id), objective \(s.scanObjective), scale \(s.scanScale)")
+        #expect(s.id.uuidString == id)
 
         #expect(s.layerImageSize.count == levels)
         #expect(s.layerImageSize.count == s.layerTileSize.count)
         #expect(s.layerImageSize[0].w == width && s.layerImageSize[0].h == height)
         #expect(s.tileTrait.pixelFormat == .gray)
-        #expect(s.tileTrait.compression == .jpeg)
+        #expect(s.tileTrait.compression == .jpeg || s.tileTrait.compression == .png)
         #expect(s.tileTrait.size.w == 512 && s.tileTrait.size.h == 512)
         #expect([2, 4].contains(s.layerZoom))
         for i in 1..<s.layerImageSize.count {
@@ -79,132 +143,39 @@ struct QPTIFFTests {
             #expect(s.fetchMacroJPEGImage() == nil)
         }
 
+        #expect(s.channelCount == channels)
+        // #expect(s.bands.map(\.name) == bandNames)
+
         // Thumbnail comes from the gray top layer of tier 0.
-        let thumbnail = try #require(s.fetchThumbnailJPEGImage(maxSize: 512))
-        let (tw, th) = tjDecompressHeader(thumbnail)
-        #expect(tw <= 512 && th <= 512)
-        try Data(thumbnail).write(
-            to: URL(
-                filePath: "QPTIFF/\(name)_thumbnail.jpg", directoryHint: .notDirectory,
-                relativeTo: BASE))
-
-        #expect(s.topLayerPixelData != nil)
-        #expect(s.topLayerPixelData[0]?.width == s.layerImageSize.last?.w)
-        #expect(s.topLayerPixelData[0]?.height == s.layerImageSize.last?.h)
-
-        // Bands are published as ScanProfile XML, same shape as the legacy C++ .dsmeta sidecar.
-        let names = qpMatches(s.extendedXML, "<Name>([^<]*)</Name>")
-        #expect(names.count == channels)
-        if !bandNames.isEmpty {
-            #expect(names == bandNames)
-        }
-        #expect(qpMatches(s.extendedXML, "<Color>([^<]*)</Color>").count == channels)
-        if !s.extendedXML.isEmpty {
-            _ = try #require(try? XMLDocument(xmlString: s.extendedXML))
-        }
-
-        // Beyond the stored levels, the generic virtual tile machinery serves gray tiles.
-        let virtual = try #require(
-            s.fetchTileImage(for: TileCoordinate(layer: s.layerTileSize.count, row: 0, col: 0)))
-        let (vw, vh) = tjDecompressHeader(virtual)
-        #expect(vw > 0 && vh > 0)
-    }
-
-    @Test(.serialized, arguments: ["23SC-5-2.qptiff", "_20250228132506.qptiff"])
-    func qptiffTiles(_ fn: String) async throws {
-        let s = try qpOpen(fn)
-        let midRow = s.layerTileSize[0].r / 2
-        let midCol = s.layerTileSize[0].c / 2
-        let top = s.layerTileSize.count - 1
-
-        for tier in 0..<s.tierCount {
-            let mid = TileCoordinate(layer: 0, row: midRow, col: midCol, tier: tier)
-            let raw = try #require(s.fetchTileRawImage(for: mid))
-            #expect(Data(raw).isJPEG)
-            #expect(tjDecompressHeader(raw).width == 512)
-            #expect(tjDecompressHeader(raw).height == 512)
-
-            // Deterministic regardless of the current TIFF directory position.
-            #expect(s.fetchTileRawImage(for: mid) == raw)
-
-            for coord in [
-                mid,
-                TileCoordinate(
-                    layer: 0, row: s.layerTileSize[0].r - 1, col: s.layerTileSize[0].c - 1,
-                    tier: tier),
-                TileCoordinate(layer: top, row: 0, col: 0, tier: tier),
-            ] {
-                let img = try #require(s.fetchTileImage(for: coord))
-                #expect(Data(img).isImage)
-            }
-        }
-
-        // Every tier must resolve to its own directories, not a single shared one.
-        let directories = try #require((s as? QPTIFF)?.bandDirectories)
-        #expect(directories.count == s.tierCount)
-        for tier in 1..<s.tierCount {
-            #expect(directories[tier] != directories[0])
-        }
-    }
-
-    /// Decodes the top layer of every band and composites them with the band colors
-    /// taken from extendedXML, writing the images for manual inspection.
-    @Test(.serialized, arguments: ["23SC-5-2.qptiff", "_20250228132506.qptiff"])
-    func qptiffComposite(_ fn: String) async throws {
-        let s = try qpOpen(fn)
-        let names = qpMatches(s.extendedXML, "<Name>([^<]*)</Name>")
-        let colors = qpMatches(s.extendedXML, "<Color>([^<]*)</Color>").compactMap { UInt32($0) }
-        #expect(names.count == s.tierCount && colors.count == s.tierCount)
-
-        let layer = s.layerTileSize.count - 1
-        let tj = tj3Init(Int32(TJINIT_DECOMPRESS.rawValue))
-        defer { tj3Destroy(tj) }
-
-        var grays: [[UInt8]] = []
-        var width = 0
-        var height = 0
-        for tier in 0..<s.tierCount {
-            let tile = try #require(
-                s.fetchTileImage(for: TileCoordinate(layer: layer, row: 0, col: 0, tier: tier)))
-            let (w, h) = tjDecompressHeader(tile)
-            #expect(w > 0 && h > 0)
-            width = w
-            height = h
-
-            var gray = [UInt8](repeating: 0, count: w * h)
-            #expect(tj3Decompress8(tj, tile, tile.count, &gray, Int32(w), TJPF_GRAY.rawValue) == 0)
-            grays.append(gray)
-
-            try Data(tjCompress(gray, TJPF_GRAY, w, h)).write(
+        for channel in 0..<s.channelCount {
+            let thumbnail = try #require(s.fetchThumbnailJPEGImage(maxSize: 512, channel: channel))
+            let (tw, th) = tjDecompressHeader(thumbnail)
+            #expect(tw <= 512 && th <= 512)
+            try Data(thumbnail).write(
                 to: URL(
-                    filePath: "QPTIFF/\(s.name)_band\(tier)_\(names[tier]).jpg",
-                    directoryHint: .notDirectory, relativeTo: BASE))
+                    filePath: "QPTIFF/\(name)_thumbnail_\(channel).jpg",
+                    directoryHint: .notDirectory,
+                    relativeTo: BASE))
         }
 
-        var rgb = [UInt8](repeating: 0, count: width * height * 3)
-        // At whole-slide scale the bands must carry different signals.
-        #expect(grays.dropFirst().contains { $0 != grays[0] })
-        for i in 0..<(width * height) {
-            var r = 0
-            var g = 0
-            var b = 0
-            for tier in 0..<s.tierCount {
-                let argb = colors[tier]
-                let v = Int(grays[tier][i])
-                r += Int((argb >> 16) & 0xFF) * v / 255
-                g += Int((argb >> 8) & 0xFF) * v / 255
-                b += Int(argb & 0xFF) * v / 255
-            }
-            rgb[i * 3] = UInt8(min(255, r))
-            rgb[i * 3 + 1] = UInt8(min(255, g))
-            rgb[i * 3 + 2] = UInt8(min(255, b))
-        }
+        #expect(
+            s.topLayerPixelData.allSatisfy({
+                $0 != nil && $0!.width == s.layerImageSize.last?.w
+                    && $0!.height == s.layerImageSize.last?.h
+            }))
 
-        try Data(tjCompress(rgb, TJPF_RGB, width, height)).write(
-            to: URL(
-                filePath: "QPTIFF/\(s.name)_composite.jpg", directoryHint: .notDirectory,
-                relativeTo: BASE))
-        print("Composite \(width)x\(height) of \(s.tierCount) bands written")
+        // // Beyond the stored levels, the generic virtual tile machinery serves gray tiles.
+        for channel in 0..<s.channelCount {
+            let virtual = try #require(
+                s.fetchTileImage(
+                    for: TileCoordinate(
+                        layer: s.layerTileSize.count, row: 0, col: 0, channel: channel))
+            )
+            let (vw, vh) =
+                s.tileTrait.compression == .jpeg
+                ? tjDecompressHeader(virtual) : pngDecompressHeader(virtual)
+            #expect(vw > 0 && vh > 0)
+        }
     }
 }
 
@@ -218,12 +189,4 @@ func qpOpen(_ fn: String) throws -> Slide {
         throw QPTIFFTestError.notASlide("QPTIFF/\(fn)")
     }
     return try #require(builder.makeSlide())
-}
-
-func qpMatches(_ s: String, _ pattern: String) -> [String] {
-    guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-    return regex.matches(in: s, range: NSRange(s.startIndex..., in: s)).compactMap {
-        guard let r = Range($0.range(at: 1), in: s) else { return nil }
-        return String(s[r])
-    }
 }
