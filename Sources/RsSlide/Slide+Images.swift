@@ -18,11 +18,6 @@ extension Slide {
     }
 
     public func fetchThumbnailJPEGImage(maxSize: Int = 512, channel: Int = 0) -> [UInt8]? {
-        guard tileTrait.sampleBits == 8 && tileTrait.compression == .jpeg else {
-            log.error("Failed to fetch thumbnail JPEG image. Only support JPEG format slide file.")
-            return nil
-        }
-
         // Find the most suitable layer for thumbnail generation.
         var layer = layerImageSize.count - 1
         while layer > 0 && layerImageSize[layer].w < maxSize && layerImageSize[layer].h < maxSize {

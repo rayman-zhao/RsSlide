@@ -1,5 +1,6 @@
 import Foundation
 import LibJPEGTurbo
+import LibPNG
 import RsFoundation
 
 enum TileCoordinateValidation {
@@ -36,14 +37,21 @@ extension Slide {
     }
 
     func fetchTrimmedTileImage(for coord: TileCoordinate) -> [UInt8]? {
-        guard tileTrait.compression == .jpeg else { return nil }
         guard let pxdata = fetchPixelData(from: coord, to: coord) else { return nil }
 
-        return tjCompress(pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
+        switch tileTrait.compression {
+        case .jpeg:
+            return tjCompress(
+                pxdata.pixels, tileTrait.tjPF, pxdata.width, pxdata.height, pxdata.pitch)
+        case .png:
+            return pngCompress(
+                pxdata.pixels, tileTrait.pngPF, pxdata.width, pxdata.height, pxdata.pitch)
+        default:
+            return nil
+        }
     }
 
     func fetchVirtualTileImage(for coord: TileCoordinate) -> [UInt8]? {
-        guard tileTrait.compression == .jpeg else { return nil }
         guard let from = topLayerPixelData[coord.channel] else { return nil }
         guard coord.layer >= from.layer else { return nil }
 
@@ -90,7 +98,14 @@ extension Slide {
             }
         }
 
-        return tjCompress(pixels, tileTrait.tjPF, virtualTileWidth, virtualTileHeight)
+        switch tileTrait.compression {
+        case .jpeg:
+            return tjCompress(pixels, tileTrait.tjPF, virtualTileWidth, virtualTileHeight)
+        case .png:
+            return pngCompress(pixels, tileTrait.pngPF, virtualTileWidth, virtualTileHeight)
+        default:
+            return nil
+        }
     }
 
     func trimmedPixelData(from: LayerPixelData) -> LayerPixelData {
@@ -120,8 +135,11 @@ extension Slide {
     }
 
     func fetchPixelData(from: TileCoordinate, to: TileCoordinate) -> LayerPixelData? {
-        guard tileTrait.sampleBits == 8 && tileTrait.compression == .jpeg else {
-            log.error("Failed to fetch tile pixels. Only support JPEG format slide file.")
+        guard
+            tileTrait.sampleBits == 8
+                && (tileTrait.compression == .jpeg || tileTrait.compression == .png)
+        else {
+            log.error("Failed to fetch tile pixels. Only support JPEG/PNG format slide file.")
             return nil
         }
         guard case .valid = validate(from), case .valid = validate(to) else { return nil }
@@ -157,16 +175,17 @@ extension Slide {
                     layer: pixelLayer, row: row, col: col, tier: from.tier, channel: from.channel)
                 guard let img = fetchTileRawImage(for: coord) else { continue }
 
-                tj3Decompress8(
-                    tj,
-                    img,
-                    img.count,
-                    &pixels[
-                        (row - from.row) * tileHeight * pixelPitch + (col - from.col)
-                            * tileTrait.pitchBytes],
-                    Int32(pixelPitch),
-                    tileTrait.tjPF.rawValue
-                )
+                let offset =
+                    (row - from.row) * tileHeight * pixelPitch
+                    + (col - from.col) * tileTrait.pitchBytes
+
+                if tileTrait.compression == .png {
+                    pngDecompress(img, &pixels[offset], tileTrait.pngPF, pixelPitch)
+                } else {
+                    tj3Decompress8(
+                        tj, img, img.count, &pixels[offset], Int32(pixelPitch),
+                        tileTrait.tjPF.rawValue)
+                }
             }
         }
 

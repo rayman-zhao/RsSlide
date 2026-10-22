@@ -1,5 +1,6 @@
 import Foundation
 import LibJPEGTurbo
+import LibPNG
 
 public struct TileCoordinate {
     let layer: Int
@@ -55,12 +56,23 @@ public struct TileTrait: CustomStringConvertible {
         }
     }
 
+    var pngPF: PNGPixelFormat {
+        switch pixelFormat {
+        case .rgb:
+            return .rgb
+        case .gray:
+            return .gray
+        }
+    }
+
     public var description: String {
         switch (compression, pixelFormat, sampleBits) {
         case (.jpeg, .rgb, 8):
             return "JPEG_RGB_24bits"
         case (.jpeg, .gray, 8):
             return "JPEG_GRAY_8bits"
+        case (.png, .rgb, 8):
+            return "PNG_RGB_24bits"
         case (.png, .gray, 8):
             return "PNG_GRAY_8bits"
         default:

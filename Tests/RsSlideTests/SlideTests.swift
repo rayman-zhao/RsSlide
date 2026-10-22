@@ -171,7 +171,7 @@ struct SlideTests {
     @Test(
         .serialized,
         arguments: [
-            // "3D Histech/Cell.tif"
+            // "3D Histech/Cell.tif",
             // "QPTIFF/23SC-5-2.qptiff",
             // "QPTIFF/02914056_20230103124040.qptiff",
             // "QPTIFF/02914056_20230103131001.qptiff",

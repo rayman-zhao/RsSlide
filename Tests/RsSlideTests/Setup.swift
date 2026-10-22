@@ -1,6 +1,7 @@
 import Foundation
 import FoundationXML
 import LibJPEGTurbo
+import LibPNG
 import Testing
 
 @testable import RsSlide
@@ -148,11 +149,12 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
                         }
 
                         let td = Data(raw)
-                        if td.isImage {
+                        if td.sameTileFormat(s) {
                             cnt += 1
                             totalSize += td.count
                         } else {
-                            print("Tile at \(coord) is not an image")
+                            print("Tile at \(coord) expected \(s.tileTrait.compression)")
+                            continue
                         }
                         // if li == s.layerTileSize.count - 1 {
                         //     try? td.write(to: URL(filePath: "tile_\(li)_\(rw)_\(cl).jpg",
@@ -161,7 +163,9 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
                         // }
 
                         if case .valid(trimming: true) = s.validate(coord) {
-                            let (w, h) = tjDecompressHeader(raw)
+                            let (w, h) =
+                                s.tileTrait.compression == .jpeg
+                                ? tjDecompressHeader(raw) : pngDecompressHeader(raw)
                             #expect(w < s.tileTrait.size.w || h < s.tileTrait.size.h)
                         }
                     }
@@ -206,7 +210,7 @@ func evalRandomTiles(_ s: Slide) -> (Int, Int) {
             cnt += 1
             totalSize += td.count
 
-            //print("Fetched tile at \(coord.layer)-\(coord.row)-\(coord.col)")
+            // print("Fetched tile at \(coord.layer)-\(coord.row)-\(coord.col)")
         }
     }
     let et = Date()
@@ -243,12 +247,15 @@ func evalVirtualTiles(_ s: Slide) throws {
                     for cl in 0..<(Int(ceil(Double(width) / tileW))) {
                         let coord = TileCoordinate(
                             layer: layer, row: rw, col: cl, tier: tier, channel: channel)
-                        guard let raw = s.fetchTileImage(for: coord) else {
+                        guard let raw = s.fetchTileImage(for: coord), Data(raw).sameTileFormat(s)
+                        else {
                             missingCount += 1
                             continue
                         }
 
-                        let (w, h) = tjDecompressHeader(raw)
+                        let (w, h) =
+                            s.tileTrait.compression == .jpeg
+                            ? tjDecompressHeader(raw) : pngDecompressHeader(raw)
                         if w < Int(tileW) || h < Int(tileH) {
                             print("Virtual tile \(coord) size \(w) x \(h)")
                         }
@@ -274,4 +281,17 @@ func evalVirtualTiles(_ s: Slide) throws {
     print("Virtual average tile consumed \(totalTime * 1000 / Double(count)) ms")
     print("Virtual read speed \(Double(totalSize) / 1024 / 1024 / totalTime) MB/s")
     #expect(missingCount == 0)
+}
+
+extension Data {
+    fileprivate func sameTileFormat(_ s: Slide) -> Bool {
+        switch s.tileTrait.compression {
+        case .jpeg:
+            return isJPEG
+        case .png:
+            return isPNG
+        default:
+            return false
+        }
+    }
 }
