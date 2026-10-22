@@ -11,8 +11,8 @@ enum TileCoordinateValidation {
 
 extension Slide {
     func validate(_ coordinate: TileCoordinate) -> TileCoordinateValidation {
-        guard 0..<tierCount ~= coordinate.tier else { return .invalid }
-        guard 0..<channelCount ~= coordinate.channel else { return .invalid }
+        guard 0..<tierTrait.count ~= coordinate.tier else { return .invalid }
+        guard 0..<channelTrait.count ~= coordinate.channel else { return .invalid }
 
         if 0..<layerTileSize.count ~= coordinate.layer {
             let rows = layerTileSize[coordinate.layer].r
@@ -180,9 +180,9 @@ extension Slide {
                     + (col - from.col) * tileTrait.pitchBytes
 
                 if tileTrait.compression == .png {
-                    pngDecompress(img, &pixels[offset], tileTrait.pngPF, pixelPitch)
+                    _ = pngDecompress(img, &pixels[offset], tileTrait.pngPF, pixelPitch)
                 } else {
-                    tj3Decompress8(
+                    _ = tj3Decompress8(
                         tj, img, img.count, &pixels[offset], Int32(pixelPitch),
                         tileTrait.tjPF.rawValue)
                 }

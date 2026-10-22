@@ -40,20 +40,9 @@ struct QPTIFFPreview: InternalSlidePreview {
     }
 }
 
-private struct QPTIFFBand {
-    var name = ""
-    var color = (r: 0, g: 0, b: 0)
-    var wavelength = 0
-    var layerDir: [UInt32] = []
-}
-
 final class QPTIFF: InternalSlide {
     private let tiff: OpaquePointer
-    private var bands: [QPTIFFBand] = []
-    // private var bandIndexByName: [String: Int] = [:]
-
-    // TIFF directory indices per band, exposed for tests and debugging.
-    // var bandDirectories: [[UInt32]] { bands.map(\.directories) }
+    private var channelLayerDir: [[UInt32]] = []
 
     private var tileCompression = COMPRESSION_JPEG
     private var macroDir: UInt32 = 0
@@ -66,19 +55,19 @@ final class QPTIFF: InternalSlide {
     let fileInfo: SlideFileInfo
 
     var id: UUID = .zero
+    let tierTrait = TierTrait()
+    var channelTrait: [ChannelTrait] = []
+    var tileTrait = TileTrait(width: 0, height: 0)
+
     var scanObjective = 0
     var scanScale = 0.0
-    let tierCount: Int = 1
-    let tierSpacing: Double = 0.0
-    var channelCount: Int = 0
-    var tileTrait = TileTrait(width: 0, height: 0)
-    var layerZoom = 2
     let extendedXML = ""
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
+    var layerZoom = 2
 
-    lazy var topLayerPixelData = (0..<channelCount).map { i in
+    lazy var topLayerPixelData = (0..<channelTrait.count).map { i in
         fetchPixelData(at: layerTileSize.count - 1, channel: i)
     }
 
@@ -93,7 +82,7 @@ final class QPTIFF: InternalSlide {
         fileInfo = SlideFileInfo(url: path)
 
         importDirectories()
-        guard bands.count > 0 && layerImageSize.count > 0 && tileTrait.size.w > 0 else {
+        guard channelTrait.count > 0 && layerImageSize.count > 0 && tileTrait.size.w > 0 else {
             return nil
         }
 
@@ -102,11 +91,11 @@ final class QPTIFF: InternalSlide {
                 dataSize: \(dataSize)
                 imageDesc: \(imageDesc)
                 layers: \(layerImageSize)
-                channels: \(bands.count)
+                channels: \(channelTrait.count)
                 """
             id = Data(fingerprint.utf8).hashUUID
         }
-        channelCount = bands.count
+
         if layerTileSize.count > 1 {
             layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
@@ -128,7 +117,9 @@ final class QPTIFF: InternalSlide {
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
         guard case .valid = validate(coord) else { return nil }
-        guard TIFFSetDirectory(tiff, bands[coord.channel].layerDir[coord.layer]) else { return nil }
+        guard TIFFSetDirectory(tiff, channelLayerDir[coord.channel][coord.layer]) else {
+            return nil
+        }
 
         let tileX = UInt32(coord.col * tileTrait.size.w)
         let tileY = UInt32(coord.row * tileTrait.size.h)
@@ -211,8 +202,7 @@ final class QPTIFF: InternalSlide {
                         tileTrait = TileTrait(
                             width: Int(tw), height: Int(th),
                             compression: tileCompression == COMPRESSION_JPEG ? .jpeg : .png,
-                            pixelFormat: .gray, sampleBits: 8,
-                            backgroundColorRGB: 0)
+                            pixelFormat: .gray, sampleBits: 8, backgroundColorRGB: 0)
                     }
                     if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
                         let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
@@ -243,25 +233,28 @@ final class QPTIFF: InternalSlide {
                     scanScale = v
                 }
             case "name":
-                if let idx = bands.firstIndex(where: { $0.name == value }) {
+                if let idx = channelTrait.firstIndex(where: { $0.name == value }) {
                     lastBand = idx
                 } else {
-                    bands.append(QPTIFFBand(name: value))
-                    lastBand = bands.count - 1
+                    channelTrait.append(ChannelTrait(name: value))
+                    channelLayerDir.append([])
+
+                    lastBand = channelTrait.count - 1
                 }
                 // Only the top-level <Name> of PerkinElmer-QPI-ImageDescription
                 // marks this directory as a pyramid level of the band.
                 if parent.lowercased().contains("imagedescription") {
-                    bands[lastBand].layerDir.append(dir)
+                    channelLayerDir[lastBand].append(dir)
                 }
             case "color" where lastBand >= 0:
                 let parts = value.split(separator: ",").compactMap { Int($0) }
                 if parts.count == 3 {
-                    bands[lastBand].color = (parts[0], parts[1], parts[2])
+                    channelTrait[lastBand].pseudoColorRGB =
+                        parts[0] << 16 | parts[1] << 8 | parts[2]
                 }
             case "homewavelength" where lastBand >= 0:
                 if let v = Int(value) {
-                    bands[lastBand].wavelength = v
+                    channelTrait[lastBand].wavelength = v
                 }
             default:
                 break
@@ -270,7 +263,7 @@ final class QPTIFF: InternalSlide {
     }
 
     private func importLayers() {
-        guard let levelCount = bands.map(\.layerDir.count).min(), levelCount > 0 else { return }
+        guard let levelCount = channelLayerDir.map(\.count).min(), levelCount > 0 else { return }
 
         var (w, h) = (imageWidth, imageHeight)
         let (tw, th) = tileTrait.size

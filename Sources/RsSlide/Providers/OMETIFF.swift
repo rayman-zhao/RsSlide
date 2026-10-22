@@ -50,17 +50,17 @@ final class OMETIFF: InternalSlide {
     let fileInfo: SlideFileInfo
 
     var id: UUID = UUID()
+    let tierTrait = TierTrait()
+    let channelTrait = [ChannelTrait()]
+    var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
+
     var scanObjective = 0
     var scanScale = 0.0
-    let tierCount: Int = 1
-    let tierSpacing: Double = 0.0
-    let channelCount: Int = 1
-    var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
-    var layerZoom = 2
     let extendedXML: String = ""
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
+    var layerZoom = 2
 
     lazy var topLayerPixelData = [fetchPixelData(at: layerTileSize.count - 1)]
 
@@ -187,7 +187,7 @@ final class OMETIFF: InternalSlide {
                 {
                     scanScale *= 1000.0
                 } else {
-                    log.trace("Ignore \(parent) - \(name) - \(attribute) - \(value)")
+                    log.trace("Ignore \(parent) - \(name) - \(attribute ?? "")  - \(value)")
                 }
             }
         }

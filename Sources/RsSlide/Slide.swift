@@ -18,6 +18,17 @@ public struct TileCoordinate {
     }
 }
 
+public struct TierTrait {
+    public var count: Int = 1
+    public var spacing: Double = 0.0
+}
+
+public struct ChannelTrait {
+    public var name: String = "H&E"
+    public var pseudoColorRGB: Int = 0
+    public var wavelength: Int = 555
+}
+
 public struct TileTrait: CustomStringConvertible {
     public enum CompressionHint {
         case jpeg
@@ -105,24 +116,25 @@ public struct LayerPixelData {
 }
 
 public protocol Slide {
-    var id: UUID { get }
     var mainPath: String { get }
     var name: String { get }
     var format: String { get }
     var createTime: Date { get }
     var modifyTime: Date { get }
     var dataSize: Int { get }
+
+    var id: UUID { get }
+    var tierTrait: TierTrait { get }
+    var channelTrait: [ChannelTrait] { get }
+    var tileTrait: TileTrait { get }
+
     var scanObjective: Int { get }
     var scanScale: Double { get }
-    var tierCount: Int { get }
-    var tierSpacing: Double { get }
-    var channelCount: Int { get }
-    var tileTrait: TileTrait { get }
-    var layerZoom: Int { get }
     var extendedXML: String { get }
 
     var layerImageSize: [(w: Int, h: Int)] { get }
     var layerTileSize: [(r: Int, c: Int)] { get }
+    var layerZoom: Int { get }
 
     /// Cached pixel data of the base (smallest) layer, generated once per provider.
     ///

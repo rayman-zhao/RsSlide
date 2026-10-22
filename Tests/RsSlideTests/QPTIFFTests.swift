@@ -55,7 +55,7 @@ struct QPTIFFTests {
             (
                 "20260513152446-24.qptiff", "20260513152446-24",
                 4, 9, 119824, 65652, 40, 0.173337, true, true,
-                ["DAPI", "FITC", "TRITC", "Cy5"],
+                ["DAPI", "FITC", "TRITC", "CY5"],
                 "45366061-4D4F-5000-8529-4462136B0ED2"
             ),
             (
@@ -97,7 +97,9 @@ struct QPTIFFTests {
         #expect(s.name == name)
         #expect(s.format == "QPTIFF")
         #expect(s.dataSize > 0)
-        #expect(s.channelCount == channels)
+        #expect(s.channelTrait.count == channels)
+        #expect(s.channelTrait.map(\.name) == bandNames)
+        #expect(s.channelTrait.allSatisfy { $0.pseudoColorRGB >= 0 })
         #expect(s.scanObjective == objective)
         #expect(abs(s.scanScale - scale) < 0.001)
         print("Slide GUID \(s.id), objective \(s.scanObjective), scale \(s.scanScale)")
@@ -143,11 +145,11 @@ struct QPTIFFTests {
             #expect(s.fetchMacroJPEGImage() == nil)
         }
 
-        #expect(s.channelCount == channels)
+        #expect(s.channelTrait.count == channels)
         // #expect(s.bands.map(\.name) == bandNames)
 
         // Thumbnail comes from the gray top layer of tier 0.
-        for channel in 0..<s.channelCount {
+        for channel in 0..<s.channelTrait.count {
             let thumbnail = try #require(s.fetchThumbnailJPEGImage(maxSize: 512, channel: channel))
             let (tw, th) = tjDecompressHeader(thumbnail)
             #expect(tw <= 512 && th <= 512)
@@ -165,7 +167,7 @@ struct QPTIFFTests {
             }))
 
         // // Beyond the stored levels, the generic virtual tile machinery serves gray tiles.
-        for channel in 0..<s.channelCount {
+        for channel in 0..<s.channelTrait.count {
             let virtual = try #require(
                 s.fetchTileImage(
                     for: TileCoordinate(

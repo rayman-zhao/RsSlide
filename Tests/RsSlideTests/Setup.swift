@@ -53,6 +53,8 @@ func evalSlideMetadata(_ s: Slide) async {
     #expect([24, 8].contains(s.tileTrait.sampleBits * s.tileTrait.pixelFormat.rawValue))
     #expect(s.tileTrait.maxBytes == s.tileTrait.size.w * s.tileTrait.size.h * 3)
     print("Tile format \(s.tileTrait)")
+    #expect(s.channelTrait[0].name == "H&E")
+    #expect(s.channelTrait[0].pseudoColorRGB == 0)
 
     #expect(s.layerImageSize.count == s.layerTileSize.count)
     #expect(s.layerImageSize.count > 0)
@@ -78,7 +80,7 @@ func evalSlideMetadata(_ s: Slide) async {
         let xml = try? XMLDocument(xmlString: s.extendedXML)
         #expect(xml != nil)
         xml?.forEachElement { parent, name, attribute, value in
-            print("\(parent)/\(name) - \(attribute) - \(value)")
+            print("\(parent)/\(name) - \(attribute ?? "") - \(value ?? "")")
         }
     }
 }
@@ -135,8 +137,8 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
     var totalSize = 0
     var cnt = 0
     let st = Date()
-    for channel in 0..<s.channelCount {
-        for tier in 0..<s.tierCount {
+    for channel in 0..<s.channelTrait.count {
+        for tier in 0..<s.tierTrait.count {
             for (li, layer) in s.layerTileSize.enumerated() {
                 total += layer.r * layer.c
                 for rw in 0..<layer.r {
@@ -186,8 +188,8 @@ func evalSequenceTiles(_ s: Slide) -> (Int, Int) {
 
 func evalRandomTiles(_ s: Slide) -> (Int, Int) {
     var tiles: [TileCoordinate] = []
-    for channel in 0..<s.channelCount {
-        for tier in 0..<s.tierCount {
+    for channel in 0..<s.channelTrait.count {
+        for tier in 0..<s.tierTrait.count {
             for (li, layer) in s.layerTileSize.enumerated() {
                 for rw in 0..<layer.r {
                     for cl in 0..<layer.c {
@@ -241,8 +243,8 @@ func evalVirtualTiles(_ s: Slide) throws {
         height = Int(ceil((Double(height) / Double(s.layerZoom))))
         layer += 1
 
-        for channel in 0..<s.channelCount {
-            for tier in 0..<s.tierCount {
+        for channel in 0..<s.channelTrait.count {
+            for tier in 0..<s.tierTrait.count {
                 for rw in 0..<(Int(ceil(Double(height) / tileH))) {
                     for cl in 0..<(Int(ceil(Double(width) / tileW))) {
                         let coord = TileCoordinate(
