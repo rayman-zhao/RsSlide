@@ -128,7 +128,7 @@ public protocol Slide {
     var channelTrait: [ChannelTrait] { get }
     var tileTrait: TileTrait { get }
 
-    var scanObjective: Int { get }
+    var scanObjective: Double { get }
     var scanScale: Double { get }
     var extendedXML: String { get }
 

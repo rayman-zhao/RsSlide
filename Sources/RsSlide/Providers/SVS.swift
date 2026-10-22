@@ -57,7 +57,7 @@ final class SVS: InternalSlide {
     let channelTrait = [ChannelTrait()]
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
 
-    var scanObjective = 0
+    var scanObjective = 0.0
     var scanScale = 0.0
     let extendedXML: String = ""
 
@@ -213,7 +213,7 @@ final class SVS: InternalSlide {
             if scn.scanUpToString("AppMag") != nil,
                 scn.scanString("AppMag") != nil,
                 scn.scanString("=") != nil,
-                let v = scn.scanInt()
+                let v = scn.scanDouble()
             {
                 scanObjective = v
             }

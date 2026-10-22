@@ -54,7 +54,7 @@ final class OMETIFF: InternalSlide {
     let channelTrait = [ChannelTrait()]
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
 
-    var scanObjective = 0
+    var scanObjective = 0.0
     var scanScale = 0.0
     let extendedXML: String = ""
 
@@ -181,7 +181,7 @@ final class OMETIFF: InternalSlide {
                     && attribute == "NominalMagnification",
                     let v = Double(value), v > 0
                 {
-                    scanObjective = Int(v)
+                    scanObjective = v
                 } else if parent == "Image" && name == "Pixels" && attribute == "PhysicalSizeX",
                     let v = Double(value), v > 0.0 && (scanScale == 0.0 || v < scanScale)
                 {

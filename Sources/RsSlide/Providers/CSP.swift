@@ -46,7 +46,7 @@ final class CSP: InternalSlide {
     let channelTrait = [ChannelTrait()]
     var tileTrait: TileTrait = TileTrait(width: 0, height: 0)
 
-    var scanObjective = 0
+    var scanObjective = 0.0
     var scanScale = 0.0
     let extendedXML: String = ""
 
@@ -64,7 +64,7 @@ final class CSP: InternalSlide {
 
         guard dll.cspReadScannerInfo?(cspReader, &cspScannerInfo) == 0 else { return nil }
         guard dll.cspReadConfig?(cspReader, &cspConfig) == 0 else { return nil }
-        scanObjective = Int(ceil(cspConfig.scanRatio))
+        scanObjective = Double(cspConfig.scanRatio)
         scanScale = Double(cspConfig.mpp)
         tileTrait = TileTrait(width: Int(cspConfig.tileWidth), height: Int(cspConfig.tileHeight))
         layerZoom = Int(cspConfig.downsamplingRatio)

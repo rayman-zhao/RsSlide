@@ -88,7 +88,7 @@ struct QPTIFFTests {
         ])
     func qptiffOpen(
         _ fn: String, _ name: String, _ channels: Int, _ levels: Int, _ width: Int, _ height: Int,
-        _ objective: Int, _ scale: Double, _ hasLabel: Bool, _ hasMacro: Bool,
+        _ objective: Double, _ scale: Double, _ hasLabel: Bool, _ hasMacro: Bool,
         _ bandNames: [String], _ id: String
     ) async throws {
         print("Validating QPTIFF/\(fn)")

@@ -42,7 +42,7 @@ func evalSlideMetadata(_ s: Slide) async {
     #expect(s.dataSize > 0)
     print("File size \(s.dataSize)")
 
-    #expect([10, 20, 40].contains(s.scanObjective))
+    #expect([10, 20, 40].contains(ceil(s.scanObjective)))
     print("Scan objective \(s.scanObjective)")
 
     #expect(0.001...1 ~= s.scanScale)

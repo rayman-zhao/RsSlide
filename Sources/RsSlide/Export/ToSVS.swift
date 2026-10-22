@@ -32,7 +32,7 @@ extension Slide {
             if index == 0 {
                 let desc = """
                     Aperio
-                    \(width)x\(height)[0, 0 \(width)x\(height)](\(tileWidth)x\(tileHeight)) JPEG / RGB Q = 75 | AppMag = \(scanObjective) | MPP = \(scanScale)
+                    \(width)x\(height)[0, 0 \(width)x\(height)](\(tileWidth)x\(tileHeight)) JPEG / RGB Q = 75 | AppMag = \(String(format: "%g", scanObjective)) | MPP = \(scanScale)
                     """
                 desc.withCString { ptr in
                     _ = TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, ptr)

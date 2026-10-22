@@ -59,7 +59,7 @@ final class QPTIFF: InternalSlide {
     var channelTrait: [ChannelTrait] = []
     var tileTrait = TileTrait(width: 0, height: 0)
 
-    var scanObjective = 0
+    var scanObjective = 0.0
     var scanScale = 0.0
     let extendedXML = ""
 
@@ -179,7 +179,7 @@ final class QPTIFF: InternalSlide {
         importLayers()
         // EasyScan 有很多不同的版本，输出校准值在不同的地方。
         if scanScale == 0.0 {
-            scanScale = mpp > 0 ? mpp : 0.25 * 40 / Double(max(scanObjective, 1))
+            scanScale = mpp > 0 ? mpp : 0.25 * 40 / max(scanObjective, 1)
         }
     }
 
@@ -224,7 +224,7 @@ final class QPTIFF: InternalSlide {
             case "objective" where scanObjective == 0:
                 // like 40X, 2.5X
                 if let num = value.firstMatch(of: /^[\d.]+/)?.output,
-                    let v = Int(num)
+                    let v = Double(num)
                 {
                     scanObjective = v
                 }
