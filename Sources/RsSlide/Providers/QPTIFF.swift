@@ -43,6 +43,8 @@ struct QPTIFFPreview: InternalSlidePreview {
 final class QPTIFF: InternalSlide {
     private let tiff: OpaquePointer
     private var channelLayerDir: [[UInt32]] = []
+    private var bandDirs: [(name: String, color: Int, dir: UInt32)] = []
+    private var scanRoster: [ChannelTrait] = []
 
     private var tileCompression = COMPRESSION_JPEG
     private var macroDir: UInt32 = 0
@@ -176,6 +178,7 @@ final class QPTIFF: InternalSlide {
             }
         }
 
+        routeBandDirectories()
         importLayers()
         // EasyScan 有很多不同的版本，输出校准值在不同的地方。
         if scanScale == 0.0 {
@@ -185,79 +188,135 @@ final class QPTIFF: InternalSlide {
 
     private func importMetadata(from xml: XMLDocument) {
         let dir = TIFFCurrentDirectory(tiff)
-        var lastBand = -1
+        guard let root = xml.rootElement() else { return }
 
-        xml.forEachElement { parent, name, _, value in
+        // Scalar metadata, first occurrence in the document wins.
+        xml.forEachElement { _, name, _, value in
             guard let value else { return }
-
             switch name.lowercased() {
             case "imagetype":
-                switch value.lowercased() {
-                case "fullresolution" where imageWidth == 0 && imageHeight == 0:
-                    if let compression: UInt16 = TIFFGetField(tiff, TIFFTAG_COMPRESSION),
-                        let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
-                        let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
-                    {
-                        tileCompression = Int32(compression)
-                        tileTrait = TileTrait(
-                            width: Int(tw), height: Int(th),
-                            compression: tileCompression == COMPRESSION_JPEG ? .jpeg : .png,
-                            pixelFormat: .gray, sampleBits: 8, backgroundColorRGB: 0)
-                    }
-                    if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
-                        let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
-                    {
-                        imageWidth = Int(w)
-                        imageHeight = Int(h)
-                    }
-                case "overview" where macroDir == 0:
-                    macroDir = dir
-                case "label" where labelDir == 0:
-                    labelDir = dir
-                default:
-                    break  // Thumbnail, ReducedResolution belongs to its band directories.
-                }
+                importImageType(value.lowercased(), dir: dir)
             case "identifier" where id == .zero:
-                if let v = UUID(uuidString: value) {
-                    id = v
-                }
-            case "objective" where scanObjective == 0:
+                id = UUID(uuidString: value) ?? id
+            case "objective" where scanObjective == 0.0:
                 // like 40X, 2.5X
-                if let num = value.firstMatch(of: /^[\d.]+/)?.output,
-                    let v = Double(num)
-                {
+                if let num = value.firstMatch(of: /^[\d.]+/)?.output, let v = Double(num) {
                     scanObjective = v
                 }
             case "pixelsizemicrons" where scanScale == 0.0:
-                if let v = Double(value) {
-                    scanScale = v
-                }
-            case "name":
-                if let idx = channelTrait.firstIndex(where: { $0.name == value }) {
-                    lastBand = idx
-                } else {
-                    channelTrait.append(ChannelTrait(name: value))
-                    channelLayerDir.append([])
+                scanScale = Double(value) ?? scanScale
+            default:
+                break
+            }
+        }
 
-                    lastBand = channelTrait.count - 1
-                }
-                // Only the top-level <Name> of PerkinElmer-QPI-ImageDescription
-                // marks this directory as a pyramid level of the band.
-                if parent.lowercased().contains("imagedescription") {
-                    channelLayerDir[lastBand].append(dir)
-                }
-            case "color" where lastBand >= 0:
-                let parts = value.split(separator: ",").compactMap { Int($0) }
-                if parts.count == 3 {
-                    channelTrait[lastBand].pseudoColorRGB =
-                        parts[0] << 16 | parts[1] << 8 | parts[2]
-                }
-            case "homewavelength" where lastBand >= 0:
-                if let v = Int(value) {
-                    channelTrait[lastBand].wavelength = v
+        // The top-level <Name>/<Color> pair marks this directory as a pyramid level of that band.
+        var bandName = ""
+        var bandColor = 0
+        for element in root.children?.compactMap({ $0 as? XMLElement }) ?? [] {
+            guard let value = text(of: element) else { continue }
+            switch element.name?.lowercased() ?? "" {
+            case "name":
+                bandName = value
+            case "color":
+                let rgb = value.split(separator: ",").compactMap { Int($0) }
+                if rgb.count == 3 {
+                    bandColor = rgb[0] << 16 | rgb[1] << 8 | rgb[2]
                 }
             default:
                 break
+            }
+        }
+        if !bandName.isEmpty {
+            bandDirs.append((name: bandName, color: bandColor, dir: dir))
+        }
+
+        // The ScanProfile lists every band in scan order; the first one read defines the channel
+        // roster, each entry carrying its own wavelength.
+        if scanRoster.isEmpty {
+            for band in descendants(of: root, named: "scanbands-i") {
+                let name = descendants(of: band, named: "name").first.flatMap { text(of: $0) } ?? ""
+                let wavelength = descendants(of: band, named: "homewavelength").first
+                    .flatMap { text(of: $0) }.flatMap(Int.init) ?? 555
+                scanRoster.append(ChannelTrait(name: name, wavelength: wavelength))
+            }
+        }
+    }
+
+    private func importImageType(_ value: String, dir: UInt32) {
+        switch value {
+        case "fullresolution" where imageWidth == 0 && imageHeight == 0:
+            if let compression: UInt16 = TIFFGetField(tiff, TIFFTAG_COMPRESSION),
+                let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
+                let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
+            {
+                tileCompression = Int32(compression)
+                tileTrait = TileTrait(
+                    width: Int(tw), height: Int(th),
+                    compression: tileCompression == COMPRESSION_JPEG ? .jpeg : .png,
+                    pixelFormat: .gray, sampleBits: 8, backgroundColorRGB: 0)
+            }
+            if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
+                let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
+            {
+                imageWidth = Int(w)
+                imageHeight = Int(h)
+            }
+        case "overview" where macroDir == 0:
+            macroDir = dir
+        case "label" where labelDir == 0:
+            labelDir = dir
+        default:
+            break  // Thumbnail, ReducedResolution belongs to their band directories.
+        }
+    }
+
+    private func text(of element: XMLElement) -> String? {
+        let value = element.children?
+            .compactMap { $0.kind == .text ? $0.stringValue : nil }
+            .joined() ?? ""
+        return value.isEmpty ? nil : value
+    }
+
+    private func descendants(of element: XMLElement, named name: String) -> [XMLElement] {
+        var result: [XMLElement] = []
+        for child in element.children ?? [] {
+            if let child = child as? XMLElement {
+                if child.name?.lowercased() == name {
+                    result.append(child)
+                }
+                result.append(contentsOf: descendants(of: child, named: name))
+            }
+        }
+        return result
+    }
+
+    /// Band directories repeat the roster once per pyramid level (DAPI, FITC, TRITC, DAPI, FITC,
+    /// ...); routing them by cycle position instead of by display name keeps same-named bands in
+    /// separate channels, each with its own color and wavelength. Files without a ScanProfile
+    /// roster, or whose directories don't follow it, fall back to routing by first name match.
+    private func routeBandDirectories() {
+        let period = scanRoster.count
+        let cyclic = period > 0
+            && bandDirs.indices.allSatisfy { bandDirs[$0].name == scanRoster[$0 % period].name }
+
+        channelTrait = scanRoster
+        channelLayerDir = scanRoster.map { _ in [] }
+
+        if cyclic {
+            for (k, entry) in bandDirs.enumerated() {
+                channelTrait[k % period].pseudoColorRGB = entry.color
+                channelLayerDir[k % period].append(entry.dir)
+            }
+        } else {
+            for entry in bandDirs {
+                if let idx = channelTrait.firstIndex(where: { $0.name == entry.name }) {
+                    channelTrait[idx].pseudoColorRGB = entry.color
+                    channelLayerDir[idx].append(entry.dir)
+                } else {
+                    channelTrait.append(ChannelTrait(name: entry.name, pseudoColorRGB: entry.color))
+                    channelLayerDir.append([entry.dir])
+                }
             }
         }
     }
