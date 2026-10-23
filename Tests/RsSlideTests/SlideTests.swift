@@ -181,7 +181,8 @@ struct SlideTests {
             // "QPTIFF/20260513152446-24.qptiff",
             // "QPTIFF/202404171225-3fl.qptiff",
             // "QPTIFF/20240417-4FL.qptiff",
-            "QPTIFF/_20250228132506.qptiff"
+            // "QPTIFF/_20250228132506.qptiff",
+            "MDSX/PV183/1.mdsx"
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind

@@ -28,6 +28,7 @@ struct SlidePreviewTests {
             ("OMETIFF/microscope_ometiff.ome.tiff", false),
             ("OMETIFF/Leica-1.ome.tiff", false),
             ("QPTIFF/_20250228132506.qptiff", false),
+            ("MDSX/PV183/1.mdsx", true),
         ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
