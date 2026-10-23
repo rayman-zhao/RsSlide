@@ -1,7 +1,5 @@
 import Foundation
-import LibJPEGTurbo
-import LibTIFF
-import LittleCMS
+import LibDICOM
 import RsFoundation
 
 struct DCMPreview: InternalSlidePreview {
@@ -12,6 +10,19 @@ struct DCMPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
+        if let children = try? FileManager.default.contentsOfDirectory(
+            at: fileInfo.mainURL.deletingLastPathComponent(),
+            includingPropertiesForKeys: nil)
+        {
+            for child in children where child.pathExtension.lowercased() == "dcm" {
+                if let file = DCMFile.open(child), file.role == "OVERVIEW",
+                    let frame = file.readRawFrame(1)
+                {
+                    return frame
+                }
+            }
+        }
+
         return nil
     }
 }
