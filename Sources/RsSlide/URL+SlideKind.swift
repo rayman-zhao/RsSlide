@@ -44,9 +44,6 @@ extension URL {
 
         let name = self.lastPathComponent.lowercased()
         if self.hasDirectoryPath {
-            if name.hasSuffix(".dsmeta") {
-                return .metadataFolder
-            }
             #if MORE_PROVIDERS_AVAILABLE
                 if let url = reachableChild(named: "1.mds") {
                     log.trace("Found 1.mds in \(url.path)")
@@ -60,10 +57,29 @@ extension URL {
                             preview: { VMSDKPreview(path: url) }, slide: { VMSDK(path: url) }))
                 }
             #endif
+            if name.hasSuffix(".dsmeta") {
+                return .metadataFolder
+            }
+            if let url = reachableChild(matching: /(?i)\.dcm$/) {
+                log.trace("Found dcm in \(url.path)")
+                return .slide(
+                    SlideFactory(preview: { DCMPreview(path: url) }, slide: { DCM(path: url) }))
+            }
 
             return .genericFolder
         }
 
+        #if MORE_PROVIDERS_AVAILABLE
+            if name.hasSuffix(".mdsx") || name.hasSuffix(".mdss") {
+                return .slide(
+                    SlideFactory(
+                        preview: { VMSDKPreview(path: self) }, slide: { VMSDK(path: self) }))
+            }
+            if name.hasSuffix(".mds") {
+                return .slide(
+                    SlideFactory(preview: { MDSPreview(path: self) }, slide: { MDS(path: self) }))
+            }
+        #endif
         if name.hasSuffix(".ome.tif") || name.hasSuffix(".ome.tiff") {
             return .slide(
                 SlideFactory(
@@ -73,25 +89,18 @@ extension URL {
             return .slide(
                 SlideFactory(preview: { SVSPreview(path: self) }, slide: { SVS(path: self) }))
         }
-        if name.hasSuffix(".csp") {
-            return .slide(
-                SlideFactory(preview: { CSPPreview(path: self) }, slide: { CSP(path: self) }))
-        }
         if name.hasSuffix(".qptiff") {
             return .slide(
                 SlideFactory(preview: { QPTIFFPreview(path: self) }, slide: { QPTIFF(path: self) }))
         }
-        #if MORE_PROVIDERS_AVAILABLE
-            if name.hasSuffix(".mds") {
-                return .slide(
-                    SlideFactory(preview: { MDSPreview(path: self) }, slide: { MDS(path: self) }))
-            }
-            if name.hasSuffix(".mdsx") || name.hasSuffix(".mdss") {
-                return .slide(
-                    SlideFactory(
-                        preview: { VMSDKPreview(path: self) }, slide: { VMSDK(path: self) }))
-            }
-        #endif
+        if name.hasSuffix(".dcm") {
+            return .slide(
+                SlideFactory(preview: { DCMPreview(path: self) }, slide: { DCM(path: self) }))
+        }
+        if name.hasSuffix(".csp") {
+            return .slide(
+                SlideFactory(preview: { CSPPreview(path: self) }, slide: { CSP(path: self) }))
+        }
 
         log.trace("Not slide \(self.path)")
         return .genericFile
