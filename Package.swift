@@ -1,7 +1,16 @@
 // swift-tools-version: 6.4
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
+import Foundation
 import PackageDescription
+
+// MoreProviders is a private git submodule that public clones don't have; gate the
+// flag on its presence so public checkouts build without manifest edits. SwiftPM
+// caches manifest results (~/.swiftpm/cache/manifests) keyed by file content only,
+// so checkouts sharing this identical file share one entry — clear that cache
+// after flipping submodule presence if builds look stale.
+let moreProvidersAvailable = FileManager.default.fileExists(
+    atPath: "Sources/RsSlide/MoreProviders/MDS.swift")
 
 let package = Package(
     name: "RsSlide",
@@ -27,8 +36,7 @@ let package = Package(
             ],
             swiftSettings: [
                 // .strictMemorySafety(true),
-                .define("MORE_PROVIDERS_AVAILABLE")
-            ],
+            ] + (moreProvidersAvailable ? [.define("MORE_PROVIDERS_AVAILABLE")] : []),
         ),
         .target(
             name: "CVendorSDKs",
@@ -42,9 +50,7 @@ let package = Package(
         .testTarget(
             name: "RsSlideTests",
             dependencies: ["RsSlide"],
-            swiftSettings: [
-                .define("MORE_PROVIDERS_AVAILABLE")
-            ],
+            swiftSettings: moreProvidersAvailable ? [.define("MORE_PROVIDERS_AVAILABLE")] : [],
         ),
     ]
 )
