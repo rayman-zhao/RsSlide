@@ -52,7 +52,7 @@ final class CSP: InternalSlide {
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
-    var layerZoom = 2
+    let layerZoom: Int
 
     lazy var topLayerPixelData = [fetchPixelData(at: layerTileSize.count - 1)]
 

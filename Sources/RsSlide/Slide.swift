@@ -147,3 +147,15 @@ public protocol Slide {
     func fetchMacroJPEGImage() -> [UInt8]?
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]?
 }
+
+extension Slide {
+    public var layerZoom: Int {
+        if layerTileSize.count > 1 {
+            // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
+            // layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
+            return Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
+        } else {
+            return 2
+        }
+    }
+}

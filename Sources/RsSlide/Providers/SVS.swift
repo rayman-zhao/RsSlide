@@ -63,7 +63,6 @@ final class SVS: InternalSlide {
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
-    var layerZoom = 2
 
     lazy var topLayerPixelData = [fetchPixelData(at: layerTileSize.count - 1)]
 
@@ -80,12 +79,6 @@ final class SVS: InternalSlide {
         importDirectories()
         guard layerImageSize.count > 0 && tileTrait.size.w > 0 && tileTrait.size.h > 0 else {
             return nil
-        }
-
-        if layerTileSize.count > 1 {
-            // The 2312399.svs has 4.00036166 zoom, so that use tile size instead.
-            // layerZoom = Int(ceil(Double(layerImageSize[0].w) / Double(layerImageSize[1].w)))
-            layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
 

@@ -67,7 +67,6 @@ final class QPTIFF: InternalSlide {
 
     var layerImageSize: [(w: Int, h: Int)] = []
     var layerTileSize: [(r: Int, c: Int)] = []
-    var layerZoom = 2
 
     lazy var topLayerPixelData = (0..<channelTrait.count).map { i in
         fetchPixelData(at: layerTileSize.count - 1, channel: i)
@@ -96,10 +95,6 @@ final class QPTIFF: InternalSlide {
                 channels: \(channelTrait.count)
                 """
             id = Data(fingerprint.utf8).hashUUID
-        }
-
-        if layerTileSize.count > 1 {
-            layerZoom = Int(ceil(Double(layerTileSize[0].r) / Double(layerTileSize[1].r)))
         }
     }
 
@@ -236,7 +231,8 @@ final class QPTIFF: InternalSlide {
         if scanRoster.isEmpty {
             for band in descendants(of: root, named: "scanbands-i") {
                 let name = descendants(of: band, named: "name").first.flatMap { text(of: $0) } ?? ""
-                let wavelength = descendants(of: band, named: "homewavelength").first
+                let wavelength =
+                    descendants(of: band, named: "homewavelength").first
                     .flatMap { text(of: $0) }.flatMap(Int.init) ?? 555
                 scanRoster.append(ChannelTrait(name: name, wavelength: wavelength))
             }
@@ -272,7 +268,8 @@ final class QPTIFF: InternalSlide {
     }
 
     private func text(of element: XMLElement) -> String? {
-        let value = element.children?
+        let value =
+            element.children?
             .compactMap { $0.kind == .text ? $0.stringValue : nil }
             .joined() ?? ""
         return value.isEmpty ? nil : value
@@ -297,7 +294,8 @@ final class QPTIFF: InternalSlide {
     /// roster, or whose directories don't follow it, fall back to routing by first name match.
     private func routeBandDirectories() {
         let period = scanRoster.count
-        let cyclic = period > 0
+        let cyclic =
+            period > 0
             && bandDirs.indices.allSatisfy { bandDirs[$0].name == scanRoster[$0 % period].name }
 
         channelTrait = scanRoster
