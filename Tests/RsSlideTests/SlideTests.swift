@@ -132,6 +132,11 @@ struct SlideTests {
                 "260808-6",  // Stripped TIF, init nil.
                 "TIF", false, false, false, true
             ),
+            (
+                "DCM/锦州582531-10/", "78d041ac-3756-51d4-9c8b-224e846cabdb",
+                "锦州582531-10",
+                "DCM", true, true, false, false
+            ),
         ])
     func slideValid(
         _ fn: String, _ sid: String, _ name: String, _ fmt: String,
@@ -182,7 +187,8 @@ struct SlideTests {
             // "QPTIFF/202404171225-3fl.qptiff",
             // "QPTIFF/20240417-4FL.qptiff",
             // "QPTIFF/_20250228132506.qptiff",
-            "MDSX/PV183/1.mdsx"
+            // "MDSX/PV183/1.mdsx",
+            "DCM/锦州582531-10/"
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
