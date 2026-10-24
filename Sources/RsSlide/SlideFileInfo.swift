@@ -16,31 +16,69 @@ struct SlideFileInfo {
     let modifyTime: Date
     let dataSize: Int
 
+    /// Regular files of the slide folder, cached from the listing behind
+    /// `dataSize` so consumers need not enumerate the folder again; empty for
+    /// single-file slides.
+    let children: [URL]
+
     init(url: URL) {
         mainURL = url
         mainPath = url.filePath
 
-        let fileName = url.lastPathComponent
-        let fileNameLower = fileName.lowercased()
-        if fileNameLower.hasSuffix(".ome.tif") {
-            name = String(fileName.dropLast(8))
-            format = "OME.TIF"
-        } else if fileNameLower.hasSuffix(".ome.tiff") {
-            name = String(fileName.dropLast(9))
-            format = "OME.TIFF"
-        } else {
-            format = url.pathExtension.uppercased()
-            if fileNameLower == "1.mds" || fileNameLower == "1.mdsx" {
-                name = url.deletingLastPathComponent().lastPathComponent
-            } else {
-                name = url.deletingPathExtension().lastPathComponent
-            }
-        }
-
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         createTime = (attrs?[.creationDate] as? Date) ?? Date(timeIntervalSince1970: 0)
         modifyTime = (attrs?[.modificationDate] as? Date) ?? Date(timeIntervalSince1970: 0)
-        dataSize = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+
+        let fileName = url.lastPathComponent
+        let fileNameLower = fileName.lowercased()
+        // Folder-type slides (`1.mds`/`1.mdsx`, a folder of DICOM instances) are
+        // one slide per folder: named after the folder and sized by the total of
+        // its files. Single-instance DICOM slides (a standalone VOLUME .dcm)
+        // have not been seen yet; when one shows up, keep the stem name by
+        // checking siblings here.
+        if fileNameLower == "1.mds" || fileNameLower == "1.mdsx" || fileNameLower.hasSuffix(".dcm")
+        {
+            let folder = url.deletingLastPathComponent()
+            name = folder.lastPathComponent
+            format = url.pathExtension.uppercased()
+            (dataSize, children) = Self.regularFiles(in: folder)
+        } else {
+            if fileNameLower.hasSuffix(".ome.tif") {
+                name = String(fileName.dropLast(8))
+                format = "OME.TIF"
+            } else if fileNameLower.hasSuffix(".ome.tiff") {
+                name = String(fileName.dropLast(9))
+                format = "OME.TIFF"
+            } else {
+                name = url.deletingPathExtension().lastPathComponent
+                format = url.pathExtension.uppercased()
+            }
+            dataSize = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+            children = []
+        }
+    }
+
+    /// The cached child matching the file name, case-insensitively; nil when
+    /// absent.
+    func child(named name: String) -> URL? {
+        children.first { $0.lastPathComponent.lowercased() == name.lowercased() }
+    }
+
+    /// The regular files of a folder with their sizes; hidden files and
+    /// subfolders are skipped.
+    private static func regularFiles(in folder: URL) -> (totalSize: Int, children: [URL]) {
+        let listed =
+            (try? FileManager.default.contentsOfDirectory(
+                at: folder, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+
+        return listed.reduce(into: (totalSize: 0, children: [URL]())) { result, child in
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: child.path),
+                (attrs[.type] as? FileAttributeType) == .typeRegular
+            else { return }
+
+            result.children.append(child)
+            result.totalSize += (attrs[.size] as? NSNumber)?.intValue ?? 0
+        }
     }
 }
 
