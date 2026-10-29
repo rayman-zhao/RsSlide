@@ -44,6 +44,7 @@ final class QPTIFF: InternalSlide {
     private let tiff: OpaquePointer
     private var channelLayerDir: [[UInt32]] = []
     private var bandDirs: [(name: String, color: Int, dir: UInt32)] = []
+    private var jpegTablesByDir: [UInt32: [UInt8]] = [:]
     private var scanRoster: [ChannelTrait] = []
 
     private var tileCompression = COMPRESSION_JPEG
@@ -52,7 +53,6 @@ final class QPTIFF: InternalSlide {
     private var imageDesc = ""
     private var imageWidth = 0
     private var imageHeight = 0
-    private let quality = 85
 
     let fileInfo: SlideFileInfo
 
@@ -114,7 +114,8 @@ final class QPTIFF: InternalSlide {
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
         guard case .valid = validate(coord) else { return nil }
-        guard TIFFSetDirectory(tiff, channelLayerDir[coord.channel][coord.layer]) else {
+        let dir = channelLayerDir[coord.channel][coord.layer]
+        guard TIFFSetDirectory(tiff, dir) else {
             return nil
         }
 
@@ -130,6 +131,13 @@ final class QPTIFF: InternalSlide {
             }
             guard tileSize > 0 else { return nil }
             buf.removeSubrange(tileSize...)
+
+            // Band tiles reference the directory's shared JPEGTables instead of embedding
+            // them; a bare stream (SOI straight into SOF0) cannot decode anywhere, so
+            // complete it by splicing the tables over the SOI.
+            if buf.starts(with: [0xFF, 0xD8, 0xFF, 0xC0]), let tables = jpegTables(for: dir) {
+                buf.replaceSubrange(0..<2, with: tables)
+            }
             return buf
         } else {
             let tileSize = buf.withUnsafeMutableBytes {
@@ -138,6 +146,25 @@ final class QPTIFF: InternalSlide {
             guard tileSize > 0 else { return nil }
             return pngCompress2(buf, .gray, tileTrait.size.w, tileTrait.size.h)
         }
+    }
+
+    // libtiff's JPEGTables pointer lives in directory-owned storage freed on the next
+    // TIFFSetDirectory, so copy each directory's tables (minus their trailing EOI) once
+    // and reuse the copy for every tile. An empty result marks "no usable tables"
+    // (tag absent or the bare FFD8 FFD9 placeholder) and is cached as well.
+    private func jpegTables(for dir: UInt32) -> [UInt8]? {
+        if let cached = jpegTablesByDir[dir] { return cached.isEmpty ? nil : cached }
+
+        let field: (count: UInt32?, data: UnsafeMutableRawPointer?) = TIFFGetField(
+            tiff, TIFFTAG_JPEGTABLES)
+        var tables: [UInt8] = []
+        if let count = field.count, let data = field.data, count > 4 {
+            tables = Array(
+                UnsafeBufferPointer(
+                    start: data.assumingMemoryBound(to: UInt8.self), count: Int(count) - 2))
+        }
+        jpegTablesByDir[dir] = tables
+        return tables.isEmpty ? nil : tables
     }
 
     private func importDirectories() {
