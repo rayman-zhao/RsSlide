@@ -1,10 +1,9 @@
 import Foundation
+import LibTIFF
 import RsFoundation
 
-/// Olympus cellSens slide: the `.vsi` file is an OLE compound document holding
-/// only metadata, while pixels live in tiled-JPEG `.ets` files under the
-/// sibling `_basename_` folder (`stackN/frame_t.ets`, plus `blob_*` blocks for
-/// extra images/channels).
+/// Olympus cellSens slide: the `.vsi` file is a little-endian TIFF whose IFD 0
+/// holds a JPEG overview of the glass slide.
 struct VSIPreview: InternalSlidePreview {
     let fileInfo: SlideFileInfo
 
@@ -13,7 +12,14 @@ struct VSIPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
-        return nil
+        #if os(Windows)
+            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
+        #else
+            guard let tiff = TIFFOpen(fileInfo.mainPath, "rh") else { return nil }
+        #endif
+        defer { TIFFClose(tiff) }
+
+        return TIFFReadJPEGImage(tiff, 0)
     }
 }
 

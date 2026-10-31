@@ -16,9 +16,10 @@ struct SlideFileInfo {
     let modifyTime: Date
     let dataSize: Int
 
-    /// Regular files of the slide folder, cached from the listing behind
-    /// `dataSize` so consumers need not enumerate the folder again; empty for
-    /// single-file slides.
+    /// Regular files of the slide folder (or, for a cellSens slide, of the
+    /// companion `_basename_` stack folder, recursively), cached from the
+    /// listing behind `dataSize` so consumers need not enumerate it again;
+    /// empty for single-file slides.
     let children: [URL]
 
     init(url: URL) {
@@ -42,6 +43,17 @@ struct SlideFileInfo {
             name = folder.lastPathComponent
             format = url.pathExtension.uppercased()
             (dataSize, children) = Self.regularFiles(in: folder)
+        } else if fileNameLower.hasSuffix(".vsi") {
+            // A cellSens slide is a file-plus-folder composite: a small metadata
+            // container whose pixels live in the sibling `_basename_` stack
+            // folder, so it is sized and listed from both.
+            name = url.deletingPathExtension().lastPathComponent
+            format = "VSI"
+            let stacks = Self.regularFiles(
+                in: url.deletingLastPathComponent().appendingPathComponent("_\(name)_"),
+                recursive: true)
+            dataSize = Int((attrs?[.size] as? NSNumber)?.int64Value ?? 0) + stacks.totalSize
+            children = stacks.children
         } else {
             if fileNameLower.hasSuffix(".ome.tif") {
                 name = String(fileName.dropLast(8))
@@ -53,7 +65,7 @@ struct SlideFileInfo {
                 name = url.deletingPathExtension().lastPathComponent
                 format = url.pathExtension.uppercased()
             }
-            dataSize = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+            dataSize = Int((attrs?[.size] as? NSNumber)?.int64Value ?? -1)
             children = []
         }
     }
@@ -64,21 +76,32 @@ struct SlideFileInfo {
         children.first { $0.lastPathComponent.lowercased() == name.lowercased() }
     }
 
-    /// The regular files of a folder with their sizes; hidden files and
-    /// subfolders are skipped.
-    private static func regularFiles(in folder: URL) -> (totalSize: Int, children: [URL]) {
+    /// The regular files of a folder with their sizes; hidden files are skipped,
+    /// subfolders only when `recursive` (the cellSens `stackN` layout nests).
+    private static func regularFiles(
+        in folder: URL, recursive: Bool = false
+    ) -> (totalSize: Int, children: [URL]) {
         let listed =
             (try? FileManager.default.contentsOfDirectory(
                 at: folder, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
 
-        return listed.reduce(into: (totalSize: 0, children: [URL]())) { result, child in
+        var totalSize = 0
+        var children: [URL] = []
+        for child in listed {
             guard let attrs = try? FileManager.default.attributesOfItem(atPath: child.path),
-                (attrs[.type] as? FileAttributeType) == .typeRegular
-            else { return }
+                let type = attrs[.type] as? FileAttributeType
+            else { continue }
 
-            result.children.append(child)
-            result.totalSize += (attrs[.size] as? NSNumber)?.intValue ?? 0
+            if type == .typeRegular {
+                children.append(child)
+                totalSize += Int((attrs[.size] as? NSNumber)?.int64Value ?? 0)
+            } else if recursive, type == .typeDirectory {
+                let sub = regularFiles(in: child, recursive: true)
+                children += sub.children
+                totalSize += sub.totalSize
+            }
         }
+        return (totalSize, children)
     }
 }
 

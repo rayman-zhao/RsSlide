@@ -30,6 +30,8 @@ struct SlidePreviewTests {
             ("QPTIFF/_20250228132506.qptiff", false),
             ("MDSX/PV183/1.mdsx", true),
             ("DCM/锦州582531-10/", false),
+            ("奥林巴斯/图像.vsi", false),
+            ("奥林巴斯/图像_王磊-PD-L1.vsi", false),
         ])
     func previewValid(_ fn: String, _ more: Bool) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
@@ -39,6 +41,7 @@ struct SlidePreviewTests {
 
         print("Previewing \(fn)")
         let sp = evalMakeSlidePreview(fromTrait: trait)
+        print("dataSize \(sp.dataSize)")
         evalSlidePreviewMacroImage(sp)
     }
 
@@ -62,7 +65,7 @@ struct SlidePreviewTests {
 
         try! img.write(
             to: URL(
-                filePath: "preview.jpg",
+                filePath: "preview_\(sp.name).jpg",
                 directoryHint: .notDirectory,
                 relativeTo: BASE))
 
@@ -78,7 +81,7 @@ struct SlidePreviewTests {
             if degrees == 90 {
                 try! Data(rotated).write(
                     to: URL(
-                        filePath: "preview_rot90.jpg",
+                        filePath: "preview_\(sp.name)_rot90.jpg",
                         directoryHint: .notDirectory,
                         relativeTo: BASE))
             }
