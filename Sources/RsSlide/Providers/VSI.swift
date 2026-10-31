@@ -1,53 +1,53 @@
-#if os(Windows)
-    import WinSDK
-#endif
 import Foundation
 import LibTIFF
 import RsFoundation
 
-/// C-stdio random access for `.ets` stacks. Foundation's `FileHandle`
-/// read path behaves differently across the Foundation builds on Windows and
-/// stack offsets must reach past 2 GiB, so reads go through `_wfopen` /
-/// `_fseeki64` (wide-char path, 64-bit offsets) instead.
+/// Olympus cellSens slide: the `.vsi` file is a little-endian TIFF whose IFD 0
+/// holds a JPEG overview of the glass slide.
+struct VSIPreview: InternalSlidePreview {
+    let fileInfo: SlideFileInfo
+
+    init(path: URL) {
+        fileInfo = SlideFileInfo(url: path)
+    }
+
+    func fetchMacroJPEGImage() -> [UInt8]? {
+        #if os(Windows)
+            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
+        #else
+            guard let tiff = TIFFOpen(fileInfo.mainPath, "rh") else { return nil }
+        #endif
+        defer { TIFFClose(tiff) }
+
+        return TIFFReadJPEGImage(tiff, 0)
+    }
+}
+
+/// Random access to an `.ets` stack; offsets are absolute and can exceed
+/// 2 GiB (FileHandle seek/read verified against such files on this toolchain).
 private final class ETSFile {
-    private let file: UnsafeMutablePointer<FILE>?
+    private let handle: FileHandle
 
     init?(url: URL) {
-        #if os(Windows)
-            var mode = Array("rb".utf16).map { WCHAR($0) }
-            mode.append(0)
-            file = url.path.wideString.withUnsafeBufferPointer { path in
-                mode.withUnsafeBufferPointer { m in
-                    guard let p = path.baseAddress, let w = m.baseAddress else { return nil }
-                    return _wfopen(p, w)
-                }
-            }
-        #else
-            file = fopen(url.path, "rb")
-        #endif
-        guard file != nil else { return nil }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        self.handle = handle
     }
 
     deinit {
-        if let file { fclose(file) }
+        try? handle.close()
     }
 
     func read(at offset: UInt64, count: Int) -> [UInt8]? {
-        guard count > 0, let file, seek(offset) else { return nil }
-        var buffer = [UInt8](repeating: 0, count: count)
-        let got = buffer.withUnsafeMutableBytes { ptr in
-            fread(ptr.baseAddress, 1, count, file)
+        guard count > 0 else { return nil }
+        do {
+            try handle.seek(toOffset: offset)
+            guard let data = try handle.read(upToCount: count), data.count == count else {
+                return nil
+            }
+            return [UInt8](data)
+        } catch {
+            return nil
         }
-        return got == UInt(count) ? buffer : nil
-    }
-
-    private func seek(_ offset: UInt64) -> Bool {
-        guard let file, offset <= UInt64(Int64.max) else { return false }
-        #if os(Windows)
-            return _fseeki64(file, Int64(offset), SEEK_SET) == 0
-        #else
-            return fseeko(file, off_t(offset), SEEK_SET) == 0
-        #endif
     }
 }
 
@@ -129,15 +129,15 @@ struct VSIMetadata {
             var offset = Int(firstField)
             for _ in 0..<count {
                 let pos = base + offset
-                guard offset > 0, pos + 16 <= bytes.count,
+                guard nodeBudget > 0, offset > 0, pos + 16 <= bytes.count,
                     let fieldType = i32(at: pos), let tag = i32(at: pos + 4),
                     let nextField = u32(at: pos + 8), let dataSize = i32(at: pos + 12),
                     tag >= 0
                 else { break }
 
                 let extraTag = (fieldType & 0x8000000) != 0
-                let extended = (fieldType & 0x10000000) != 0
-                let inlineData = (fieldType & 0x40000000) != 0
+                let extended = (fieldType & 0x1000_0000) != 0
+                let inlineData = (fieldType & 0x4000_0000) != 0
                 let realType = Int(fieldType & 0xFFFFFF)
 
                 var node = Node(
@@ -193,9 +193,15 @@ struct VSIMetadata {
             }
         }
 
+        private static let trimSet = CharacterSet(charactersIn: "\0 ")
+
         /// Strings are UTF-16 when every other byte is zero, plain bytes
-        /// otherwise (both encodings occur in the tree).
+        /// otherwise (both encodings occur in the tree). Real tree strings are
+        /// names and units, always small; anything larger is an annotation or
+        /// vector payload that no consumer queries, so it is not decoded.
         private func text(at p: Int, len: Int) -> String? {
+            guard len <= 4096 else { return nil }
+
             var utf16 = len >= 2 && len % 2 == 0
             if utf16 {
                 for i in stride(from: p + 1, to: p + len, by: 2) where bytes[i] != 0 {
@@ -215,9 +221,9 @@ struct VSIMetadata {
                 }
                 s = String(decoding: units, as: UTF16.self)
             } else {
-                s = String(decoding: bytes[p..<p + len], as: UTF8.self)
+                s = String(bytes: bytes[p..<p + len], encoding: .utf8) ?? ""
             }
-            let trimmed = s.trimmingCharacters(in: CharacterSet(charactersIn: "\0 "))
+            let trimmed = s.trimmingCharacters(in: Self.trimSet)
             return trimmed.isEmpty ? nil : trimmed
         }
 
@@ -245,27 +251,6 @@ struct VSIMetadata {
             guard let low = u32(at: p), let high = u32(at: p + 4) else { return nil }
             return Double(bitPattern: UInt64(low) | UInt64(high) << 32)
         }
-    }
-}
-
-/// Olympus cellSens slide: the `.vsi` file is a little-endian TIFF whose IFD 0
-/// holds a JPEG overview of the glass slide.
-struct VSIPreview: InternalSlidePreview {
-    let fileInfo: SlideFileInfo
-
-    init(path: URL) {
-        fileInfo = SlideFileInfo(url: path)
-    }
-
-    func fetchMacroJPEGImage() -> [UInt8]? {
-        #if os(Windows)
-            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
-        #else
-            guard let tiff = TIFFOpen(fileInfo.mainPath, "rh") else { return nil }
-        #endif
-        defer { TIFFClose(tiff) }
-
-        return TIFFReadJPEGImage(tiff, 0)
     }
 }
 
@@ -399,11 +384,11 @@ private struct ETSStack {
 
 final class VSI: InternalSlide {
     private let mainStack: ETSStack
-    private let stream: ETSFile?
-    private let tiff: OpaquePointer?
+    private let stream: ETSFile
+    private let tiff: OpaquePointer
 
     let fileInfo: SlideFileInfo
-    let id: Foundation.UUID
+    let id: UUID
     let tierTrait = TierTrait()
     let channelTrait = [ChannelTrait()]
     let tileTrait: TileTrait
@@ -431,7 +416,7 @@ final class VSI: InternalSlide {
         #endif
         self.tiff = tiff
 
-        guard let data = FileManager.default.contents(atPath: fileInfo.mainPath),
+        guard let data = try? Data(contentsOf: fileInfo.mainURL),
             let meta = VSIMetadata(data: data),
             let collection = meta.root.first(where: { $0.tag == 2000 })
         else { return nil }
@@ -523,7 +508,7 @@ final class VSI: InternalSlide {
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
-        guard case .valid = validate(coord), let stream else { return nil }
+        guard case .valid = validate(coord) else { return nil }
         guard let entry = mainStack.entry(col: coord.col, row: coord.row, level: coord.layer)
         else {
             // A complete grid is part of the format, so a missing tile means
