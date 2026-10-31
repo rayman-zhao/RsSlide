@@ -21,6 +21,8 @@ struct TraitTests {
         ("OMETIFF/Leica-1.ome.tiff", "isSlide", false, false),
         ("DCM/锦州582531-10/", "isSlide", false, true),
         ("DCM/锦州582531-10/20261008_140805_0_Label.dcm", "isSlide", false, false),
+        ("奥林巴斯/图像.vsi", "isSlide", false, false),
+        ("奥林巴斯/_图像_/", "isMetadataFolder", false, true),
     ])
     func makeTrait(_ fn: String, _ st: String, _ more: Bool, _ dir: Bool) async throws {
         var url: URL? = nil

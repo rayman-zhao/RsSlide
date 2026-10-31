@@ -60,6 +60,14 @@ extension URL {
             if name.hasSuffix(".dsmeta") {
                 return .metadataFolder
             }
+            // cellSens companion folder (`_X_` beside `X.vsi`) holds the slide's
+            // .ets pixel stacks; classify as metadata so folder walks skip it.
+            if name.hasPrefix("_"), name.hasSuffix("_"), name.count > 2,
+                self.deletingLastPathComponent().reachableChild(
+                    named: String(name.dropFirst().dropLast()) + ".vsi") != nil
+            {
+                return .metadataFolder
+            }
             if let url = reachableChild(matching: /(?i)\.dcm$/) {
                 log.trace("Found dcm in \(url.path)")
                 return .slide(
@@ -100,6 +108,10 @@ extension URL {
         if name.hasSuffix(".csp") {
             return .slide(
                 SlideFactory(preview: { CSPPreview(path: self) }, slide: { CSP(path: self) }))
+        }
+        if name.hasSuffix(".vsi") {
+            return .slide(
+                SlideFactory(preview: { VSIPreview(path: self) }, slide: { VSI(path: self) }))
         }
 
         log.trace("Not slide \(self.path)")
