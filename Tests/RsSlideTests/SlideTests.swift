@@ -137,6 +137,16 @@ struct SlideTests {
                 "锦州582531-10",
                 "DCM", true, true, false, false
             ),
+            (
+                "奥林巴斯/图像.vsi", "BAED0ED8-446F-5205-9434-2F13A934F1CF",
+                "图像",
+                "VSI", true, true, false, false
+            ),
+            (
+                "奥林巴斯/图像_王磊-PD-L1.vsi", "3BB99B98-572A-5805-A359-5C3DEA00DAD3",
+                "图像_王磊-PD-L1",
+                "VSI", true, true, false, false
+            ),
         ])
     func slideValid(
         _ fn: String, _ sid: String, _ name: String, _ fmt: String,
@@ -188,7 +198,9 @@ struct SlideTests {
             // "QPTIFF/20240417-4FL.qptiff",
             // "QPTIFF/_20250228132506.qptiff",
             // "MDSX/PV183/1.mdsx",
-            "DCM/锦州582531-10/"
+            // "DCM/锦州582531-10/",
+            "奥林巴斯/图像.vsi",
+            "奥林巴斯/图像_王磊-PD-L1.vsi",
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
