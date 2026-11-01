@@ -114,6 +114,7 @@ protocol InternalSlidePreview: SlidePreview {
 
 extension InternalSlidePreview {
     var createTime: Date { fileInfo.createTime }
+    var modifyTime: Date { fileInfo.modifyTime }
     var name: String { fileInfo.name }
     var format: String { fileInfo.format }
     var dataSize: Int { fileInfo.dataSize }

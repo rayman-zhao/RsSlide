@@ -3,6 +3,7 @@ import LibJPEGTurbo
 
 public protocol SlidePreview {
     var createTime: Date { get }
+    var modifyTime: Date { get }
     var name: String { get }
     var format: String { get }
     var dataSize: Int { get }
