@@ -53,6 +53,7 @@ func evalSlideMetadata(_ s: Slide) async {
     #expect([24, 8].contains(s.tileTrait.sampleBits * s.tileTrait.pixelFormat.rawValue))
     #expect(s.tileTrait.maxBytes == s.tileTrait.size.w * s.tileTrait.size.h * 3)
     print("Tile format \(s.tileTrait)")
+    #expect(s.tileTrait.backgroundColorRGB <= 0xFFFFFF)
     #expect(s.channelTrait[0].name == "H&E")
     #expect(s.channelTrait[0].pseudoColorRGB == 0)
 
