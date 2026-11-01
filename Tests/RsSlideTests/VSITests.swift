@@ -55,6 +55,7 @@ struct VSITests {
         #expect(s.layerImageSize[0].w > 10000)
         #expect(s.scanObjective == 40 || s.scanObjective == 20)
         #expect(s.scanScale > 0.1 && s.scanScale < 0.5)
+        #expect(s.tileTrait.backgroundColorRGB <= 0xFFFFFF)
     }
 
     /// FileHandle seek/read beyond 2 GiB (large `.ets` stacks exceed it),

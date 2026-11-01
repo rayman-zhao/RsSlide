@@ -306,9 +306,12 @@ private struct ETSStack {
             let height = Self.u32(ets, 192), height > 0, height <= 1 << 24
         else { return nil }
 
+        // Background color is sizeC bytes at ETS+108 (0xEE per channel in RGB
+        // slides); read single bytes — a u32 read here would swallow the
+        // neighbouring fields.
         var background = 0xFFFFFF
-        if let r = Self.u32(ets, 108), let g = Self.u32(ets, 109), let b = Self.u32(ets, 110) {
-            background = Int(r) << 16 | Int(g) << 8 | Int(b)
+        if ets.count > 110 {
+            background = Int(ets[108]) << 16 | Int(ets[109]) << 8 | Int(ets[110])
         }
 
         let stride = 4 * (Int(ndim) + 5)
