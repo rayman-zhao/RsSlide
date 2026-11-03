@@ -128,9 +128,9 @@ struct SlideTests {
                 "OME.TIFF", false, true, false, false
             ),
             (
-                "260808-6.tif", "db30c0bc-b59a-425e-9e2c-bf9bb1dc2cb5",
-                "260808-6",  // Stripped TIF, init nil.
-                "TIF", false, false, false, true
+                "260808-6.tif", "F5E3E55E-C8B6-5C65-AA83-8E2109B1D0FF",
+                "260808-6",  // Stripped TIF.
+                "TIF", false, false, false, false
             ),
             (
                 "DCM/锦州582531-10/", "78d041ac-3756-51d4-9c8b-224e846cabdb",
@@ -199,8 +199,9 @@ struct SlideTests {
             // "QPTIFF/_20250228132506.qptiff",
             // "MDSX/PV183/1.mdsx",
             // "DCM/锦州582531-10/",
-            "奥林巴斯/图像.vsi",
-            "奥林巴斯/图像_王磊-PD-L1.vsi",
+            // "奥林巴斯/图像.vsi",
+            // "奥林巴斯/图像_王磊-PD-L1.vsi",
+            "260808-6.tif"
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind

@@ -6,7 +6,7 @@ WSI digital slide file parser — a Swift library for detecting, opening, and co
 
 | Extension(s) | Format | Provider |
 |---|---|---|
-| `.svs`, `.tif`, `.tiff` | Aperio SVS / generic TIFF pyramid | `SVS` |
+| `.svs`, `.tif`, `.tiff` | Aperio SVS / generic TIFF pyramid; a plain stripped TIFF opens as a single layer of synthetic 512×512 tiles | `SVS` |
 | `.ome.tif`, `.ome.tiff` | OME-TIFF | `OMETIFF` |
 | `.qptiff` | PerkinElmer QPTIFF | `QPTIFF` |
 | `.dcm` | DICOM WSI (SQRAY) | `DCM` |
