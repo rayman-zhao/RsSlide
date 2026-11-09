@@ -12,12 +12,19 @@ struct OMETIFFPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
+        withTIFF { TIFFReadJPEGStrip($0, $1, $2) }
+    }
+
+    func fetchMacroRGBAImage() -> RGBAImage? {
+        withTIFF { TIFFReadRGBAStrip($0, $1, $2) }
+    }
+
+    private func withTIFF<T>(_ body: (OpaquePointer, UInt32?, UInt64?) -> T?) -> T? {
         #if os(Windows)
-            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "r")
+            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "r") else { return nil }
         #else
-            let tiff = TIFFOpen(fileInfo.mainPath, "r")
+            guard let tiff = TIFFOpen(fileInfo.mainPath, "r") else { return nil }
         #endif
-        guard tiff != nil else { return nil }
         defer {
             TIFFClose(tiff)
         }
@@ -26,19 +33,19 @@ struct OMETIFFPreview: InternalSlidePreview {
             tiff, TIFFTAG_SUBIFD)
         if let count = subifd.count,
             let offset = subifd.offset, count > 0,
-            let macro = TIFFReadJPEGImage(tiff, 0, offset.pointee)
+            let macro = body(tiff, 0, offset.pointee)
         {  // Usually the macro image in mainifd is too big, so that use the first subifd instead.
             return macro
         }
 
-        return TIFFReadJPEGImage(tiff, 0)
+        return body(tiff, 0, nil)
     }
 }
 
 final class OMETIFF: InternalSlide {
     private enum LayerData {
         case tile(UInt32, UInt64?)
-        case strip(UInt32, UInt64, [UInt32]?, UInt32, UInt32)
+        case strip(UInt32, UInt64, RGBAImage?)
     }
 
     private let tiff: OpaquePointer
@@ -85,11 +92,11 @@ final class OMETIFF: InternalSlide {
 
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, labelDir)
+        return TIFFReadJPEGStrip(tiff, labelDir)
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
-        return TIFFReadJPEGImage(tiff, 0)
+        return TIFFReadJPEGStrip(tiff, 0)
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
@@ -115,18 +122,15 @@ final class OMETIFF: InternalSlide {
                 guard tileSize > 0 else { return nil }
                 return Array(buf[..<tileSize])
             }
-        case .strip(let dirnum, let diroffset, var buf, let w, let h):
-            if buf == nil {
-                guard TIFFSetDirectory(tiff, dirnum, diroffset) else { return nil }
-                let bufSize = Int(w * h)
-                buf = [UInt32](repeating: 0, count: bufSize)
-                guard TIFFReadRGBAImageOriented(tiff, w, h, &buf!, ORIENTATION_TOPLEFT, 0) == 1
-                else { return nil }
-                layerData[coord.layer] = .strip(dirnum, diroffset, buf, w, h)
+        case .strip(let dirnum, let diroffset, var image):
+            if image == nil {
+                image = TIFFReadRGBAStrip(tiff, dirnum, diroffset)
+                layerData[coord.layer] = .strip(dirnum, diroffset, image)
             }
+            guard let image else { return nil }
 
-            let iw = Int(w)
-            let ih = Int(h)
+            let iw = image.width
+            let ih = image.height
             let tileX = coord.col * tileTrait.size.w
             let tileY = coord.row * tileTrait.size.h
             let tileWidth = min(tileTrait.size.w, iw - tileX)
@@ -137,7 +141,7 @@ final class OMETIFF: InternalSlide {
                 let srcStart = (tileY + row) * iw + tileX
                 let dstStart = row * tileWidth
                 tilePixels[dstStart..<(dstStart + tileWidth)] =
-                    buf![srcStart..<(srcStart + tileWidth)]
+                    image.pixels[srcStart..<(srcStart + tileWidth)]
             }
 
             return tjCompress(tilePixels, TJPF_RGBA, tileWidth, tileHeight, 0, quality)
@@ -226,7 +230,7 @@ final class OMETIFF: InternalSlide {
                 if let _: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH) {
                     layerData.append(.tile(dir, diroffset))
                 } else {  // The Lecia-1 has strip image in reduced-resolution layer
-                    layerData.append(.strip(dir, diroffset, nil, w, h))
+                    layerData.append(.strip(dir, diroffset, nil))
                 }
 
                 layerImageSize.append((Int(w), Int(h)))

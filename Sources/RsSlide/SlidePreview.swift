@@ -1,5 +1,6 @@
 import Foundation
 import LibJPEGTurbo
+import LibTIFF
 
 public protocol SlidePreview {
     var createTime: Date { get }
@@ -9,9 +10,14 @@ public protocol SlidePreview {
     var dataSize: Int { get }
 
     func fetchMacroJPEGImage() -> [UInt8]?
+    func fetchMacroRGBAImage() -> RGBAImage?
 }
 
 extension SlidePreview {
+    /// Macro image as raw pixels where the format offers a direct read.
+    /// Returns nil when unsupported — callers should fall back to
+    /// `fetchMacroJPEGImage()` (the stored bytes may be a zero-copy haul).
+    public func fetchMacroRGBAImage() -> RGBAImage? { nil }
     /// Returns the macro image as JPEG data, losslessly rotated by the given angle.
     ///
     /// The rotation is applied directly to the JPEG's DCT coefficients without

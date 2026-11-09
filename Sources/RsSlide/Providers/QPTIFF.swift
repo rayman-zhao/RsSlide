@@ -13,25 +13,32 @@ struct QPTIFFPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
+        withTIFF { TIFFReadJPEGStrip($0, $1) }
+    }
+
+    func fetchMacroRGBAImage() -> RGBAImage? {
+        withTIFF { TIFFReadRGBAStrip($0, $1) }
+    }
+
+    private func withTIFF<T>(_ body: (OpaquePointer, UInt32) -> T?) -> T? {
         #if os(Windows)
-            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh")
+            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
         #else
-            let tiff = TIFFOpen(fileInfo.mainPath, "rh")
+            guard let tiff = TIFFOpen(fileInfo.mainPath, "rh") else { return nil }
         #endif
-        guard tiff != nil else { return nil }
         defer {
             TIFFClose(tiff)
         }
 
         let dirCount = TIFFNumberOfDirectories(tiff)
         guard dirCount > 1 else { return nil }
-        if let macro = TIFFReadJPEGImage(tiff, dirCount - 1) {
+        if let macro = body(tiff, dirCount - 1) {
             return macro
         }
 
         // Search for first strip image directory, which is usually the thumbnail image.
         for dirnum in 1..<(dirCount - 1) {
-            if let thumbnail = TIFFReadJPEGImage(tiff, dirnum) {
+            if let thumbnail = body(tiff, dirnum) {
                 return thumbnail
             }
         }
@@ -104,12 +111,12 @@ final class QPTIFF: InternalSlide {
 
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, labelDir)
+        return TIFFReadJPEGStrip(tiff, labelDir)
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, macroDir)
+        return TIFFReadJPEGStrip(tiff, macroDir)
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {

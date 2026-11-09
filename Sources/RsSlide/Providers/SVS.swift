@@ -12,22 +12,25 @@ struct SVSPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
+        withTIFF { return TIFFReadJPEGStrip($0, $1) }
+    }
+
+    func fetchMacroRGBAImage() -> RGBAImage? {
+        withTIFF { return TIFFReadRGBAStrip($0, $1) }
+    }
+
+    private func withTIFF<T>(_ body: (OpaquePointer, UInt32) -> T?) -> T? {
         #if os(Windows)
-            let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh")
+            guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
         #else
-            let tiff = TIFFOpen(fileInfo.mainPath, "rh")
+            guard let tiff = TIFFOpen(fileInfo.mainPath, "rh") else { return nil }
         #endif
-        guard tiff != nil else { return nil }
-        defer {
-            TIFFClose(tiff)
-        }
+        defer { TIFFClose(tiff) }
 
         // Directory count may be 0 when the file is a stripped/corrupt TIFF without directories.
         let dirCount = TIFFNumberOfDirectories(tiff)
         guard dirCount > 0 else { return nil }
-
-        return TIFFReadJPEGImage(tiff, dirCount - 1)
-            ?? TIFFReadJPEGImage(tiff, 1)
+        return body(tiff, dirCount - 1) ?? body(tiff, 1)
     }
 }
 
@@ -99,12 +102,12 @@ final class SVS: InternalSlide {
 
     func fetchLabelJPEGImage() -> [UInt8]? {
         guard labelDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, labelDir)
+        return TIFFReadJPEGStrip(tiff, labelDir)
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
         guard macroDir != 0 else { return nil }
-        return TIFFReadJPEGImage(tiff, macroDir)
+        return TIFFReadJPEGStrip(tiff, macroDir)
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {

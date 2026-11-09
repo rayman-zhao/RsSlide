@@ -12,6 +12,14 @@ struct VSIPreview: InternalSlidePreview {
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
+        withTIFF { TIFFReadJPEGStrip($0, $1) }
+    }
+
+    func fetchMacroRGBAImage() -> RGBAImage? {
+        withTIFF { TIFFReadRGBAStrip($0, $1) }
+    }
+
+    private func withTIFF<T>(_ body: (OpaquePointer, UInt32) -> T?) -> T? {
         #if os(Windows)
             guard let tiff = TIFFOpenW(fileInfo.mainPath.wideString, "rh") else { return nil }
         #else
@@ -19,7 +27,7 @@ struct VSIPreview: InternalSlidePreview {
         #endif
         defer { TIFFClose(tiff) }
 
-        return TIFFReadJPEGImage(tiff, 0)
+        return body(tiff, 0)
     }
 }
 
@@ -503,11 +511,11 @@ final class VSI: InternalSlide {
     // The scanner embeds its camera snapshots as the leading TIFF directories
     // of the .vsi: IFD 0 is the whole-glass overview, IFD 1 the label photo.
     func fetchLabelJPEGImage() -> [UInt8]? {
-        return TIFFReadJPEGImage(tiff, 1)
+        return TIFFReadJPEGStrip(tiff, 1)
     }
 
     func fetchMacroJPEGImage() -> [UInt8]? {
-        return TIFFReadJPEGImage(tiff, 0)
+        return TIFFReadJPEGStrip(tiff, 0)
     }
 
     func fetchTileRawImage(for coord: TileCoordinate) -> [UInt8]? {
