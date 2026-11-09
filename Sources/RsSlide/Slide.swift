@@ -106,13 +106,16 @@ public struct TileTrait: CustomStringConvertible {
     }
 }
 
-/// Pixel data of a slide layer, decompressed and packed row by row.
+/// Pixel data of a slide layer, decompressed tile by tile. Rows are strided
+/// by `pitch`, which follows the tile grid — it may exceed
+/// width × bytes/pixel (rightmost column pad) and `pixels` may likewise
+/// include bottom-row padding.
 public struct LayerPixelData {
-    let pixels: [UInt8]
-    let layer: Int
-    let width: Int
-    let pitch: Int
-    let height: Int
+    public let pixels: [UInt8]
+    public let layer: Int
+    public let width: Int
+    public let pitch: Int
+    public let height: Int
 }
 
 public protocol Slide {
