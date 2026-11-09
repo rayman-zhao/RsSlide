@@ -128,4 +128,148 @@
         else { return eFail }
         return returnJpeg(jpeg, outJpeg, outSize)
     }
+
+    /// One opened slide kept alive across raster fetches so pane resizes skip the
+    /// full reparse (`makeSlide` walks every TIFF directory); releasing the
+    /// session drops the last reference and the provider deinit closes the file.
+    final class PreviewRasterSession {
+        let slide: Slide
+        init?(_ factory: SlideFactory) {
+            guard let slide = factory.makeSlide() else { return nil }
+            self.slide = slide
+        }
+    }
+
+    // Pseudo-color fallback for channels whose metadata carries no color
+    // (pseudoColorRGB == 0); DAPI blue first, then the usual fluorophore hues.
+    private let fallbackPseudoColors: [Int] = [
+        0x3366FF, 0x33CC33, 0xFF3333, 0xCC33CC, 0x33CCCC, 0xCCCC33, 0xFF8833, 0x8844CC,
+    ]
+
+    @_cdecl("RsSlidePreviewRasterOpen")
+    public func rsSlidePreviewRasterOpen(
+        path: UnsafePointer<CWideChar>?,
+        outSession: UnsafeMutablePointer<UnsafeMutableRawPointer?>?
+    ) -> HRESULT {
+        guard let path, let outSession else { return eInvalidArg }
+        outSession.pointee = nil
+        guard let factory = slideFactory(path),
+            let session = PreviewRasterSession(factory)
+        else { return eFail }
+        outSession.pointee = Unmanaged.passRetained(session).toOpaque()
+        return HRESULT(0)  // S_OK
+    }
+
+    /// Composited pyramid thumbnail of the opened session as the same literal
+    /// Windows bitmap raster contract as `RsSlidePreviewBitmap` (32bpp BGRA,
+    /// alpha opaque, bottom-up, stride = width * 4): a color slide converts
+    /// directly, a single-channel gray slide replicates, and a multi-channel
+    /// fluorescent slide additively composites every gray plane through its
+    /// channel pseudo color (saturating at 255).
+    @_cdecl("RsSlidePreviewRaster")
+    public func rsSlidePreviewRaster(
+        session: UnsafeMutableRawPointer?,
+        maxSize: UInt32,
+        outBitmap: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?,
+        outWidth: UnsafeMutablePointer<UInt32>?,
+        outHeight: UnsafeMutablePointer<UInt32>?
+    ) -> HRESULT {
+        guard let session, let outBitmap, let outWidth, let outHeight, maxSize > 0 else {
+            return eInvalidArg
+        }
+        outBitmap.pointee = nil
+        outWidth.pointee = 0
+        outHeight.pointee = 0
+        let slide = Unmanaged<PreviewRasterSession>.fromOpaque(session)
+            .takeUnretainedValue().slide
+
+        guard let base = slide.fetchThumbnailRasterImage(maxSize: Int(maxSize)) else {
+            return eFail
+        }
+        let stride = base.width * 4
+        guard let buffer = CoTaskMemAlloc(SIZE_T(stride * base.height)) else { return eOutOfMemory }
+        let dst = buffer.assumingMemoryBound(to: UInt8.self)
+
+        if base.isColor {
+            base.pixels.withUnsafeBufferPointer { src in
+                for y in 0..<base.height {
+                    let dstRow = stride * (base.height - 1 - y)
+                    let srcRow = y * base.width * 3
+                    for x in 0..<base.width {
+                        let s = srcRow + x * 3
+                        let d = dstRow + x * 4
+                        dst[d] = src[s + 2]
+                        dst[d + 1] = src[s + 1]
+                        dst[d + 2] = src[s]
+                        dst[d + 3] = 255
+                    }
+                }
+            }
+        } else if slide.channelTrait.count == 1 {
+            base.pixels.withUnsafeBufferPointer { src in
+                for y in 0..<base.height {
+                    let dstRow = stride * (base.height - 1 - y)
+                    let srcRow = y * base.width
+                    for x in 0..<base.width {
+                        let v = src[srcRow + x]
+                        let d = dstRow + x * 4
+                        dst[d] = v
+                        dst[d + 1] = v
+                        dst[d + 2] = v
+                        dst[d + 3] = 255
+                    }
+                }
+            }
+        } else {
+            var planes = [[UInt8]]()
+            planes.reserveCapacity(slide.channelTrait.count)
+            for channel in 0..<slide.channelTrait.count {
+                guard
+                    let plane = slide.fetchThumbnailRasterImage(
+                        maxSize: Int(maxSize), channel: channel),
+                    plane.width == base.width, plane.height == base.height
+                else {
+                    CoTaskMemFree(buffer)
+                    return eFail
+                }
+                planes.append(plane.pixels)
+            }
+            let colors = (0..<slide.channelTrait.count).map { channel -> (Int, Int, Int) in
+                let rgb =
+                    slide.channelTrait[channel].pseudoColorRGB != 0
+                    ? slide.channelTrait[channel].pseudoColorRGB
+                    : fallbackPseudoColors[channel % fallbackPseudoColors.count]
+                return ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)
+            }
+            planes.withUnsafeBufferPointer { buffers in
+                for i in 0..<(base.width * base.height) {
+                    var r = 0
+                    var g = 0
+                    var b = 0
+                    for channel in 0..<buffers.count {
+                        let v = Int(buffers[channel][i])
+                        r += v * colors[channel].0
+                        g += v * colors[channel].1
+                        b += v * colors[channel].2
+                    }
+                    let d = stride * (base.height - 1 - i / base.width) + (i % base.width) * 4
+                    dst[d] = UInt8(min(255, b / 255))
+                    dst[d + 1] = UInt8(min(255, g / 255))
+                    dst[d + 2] = UInt8(min(255, r / 255))
+                    dst[d + 3] = 255
+                }
+            }
+        }
+
+        outBitmap.pointee = dst
+        outWidth.pointee = UInt32(base.width)
+        outHeight.pointee = UInt32(base.height)
+        return HRESULT(0)  // S_OK
+    }
+
+    @_cdecl("RsSlidePreviewRasterClose")
+    public func rsSlidePreviewRasterClose(session: UnsafeMutableRawPointer?) {
+        guard let session else { return }
+        Unmanaged<PreviewRasterSession>.fromOpaque(session).takeRetainedValue()
+    }
 #endif
