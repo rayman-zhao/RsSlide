@@ -29,7 +29,14 @@ let package = Package(
     products: [
         .library(
             name: "RsSlide",
-            targets: ["RsSlide"])
+            targets: ["RsSlide"]),
+        // Windows DLL (RsSlideCABI.dll) exposing C ABI exports for C++ reuse;
+        // contracts mirrored in RsShell/Explorer/SlideShim.h. Product names must
+        // be unique per package, so the dynamic product takes the target's name.
+        .library(
+            name: "RsSlideCABI",
+            type: .dynamic,
+            targets: ["RsSlideCABI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/rayman-zhao/RsFoundation", branch: "main"),
@@ -47,6 +54,12 @@ let package = Package(
                 // .strictMemorySafety(true),
             ] + (moreProvidersAvailable ? [.define("MORE_PROVIDERS_AVAILABLE")] : []),
         ),
+        .target(
+            name: "RsSlideCABI",
+            dependencies: [
+                "RsSlide",
+                .product(name: "RsPack", package: "RsPack"),
+            ]),
         .target(
             name: "CVendorSDKs",
             dependencies: [],
