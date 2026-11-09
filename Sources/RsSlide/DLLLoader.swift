@@ -6,28 +6,21 @@ final class DLLLoader {
     private let dll: HMODULE?
 
     init(name: String, folder: String) {
+        // Two vendor-DLL layouts, both anchored at the directory of the linking
+        // module (the host exe/DLL RsSlide is statically linked into): a
+        // <folder>/ beside the module (RjSlide, RsSlide dev layout), or the
+        // Ruslan app-bundle layout when the module sits at a package root
+        // (Ruslan, RsShell's thumbnail worker). Bundle.main is not consulted:
+        // with static linking the module *is* the host exe (same directory),
+        // and when the host process runs from elsewhere (JVM, COM surrogate)
+        // Bundle.main points at an unrelated path — only the module anchor works.
         var path: String = name
-        if let url = Bundle.main.url(
-            forResource: name, withExtension: ".dll",
-            subdirectory: "Ruslan_Ruslan.bundle/CloudExec/lib/\(folder)")
-        {  // For Ruslan project
-            path = url.filePath
-        } else if let url = Bundle.main.url(
-            forResource: name, withExtension: ".dll", subdirectory: "\(folder)")
-        {  // For RsSlide project
-            path = url.filePath
-        } else if let module = GetModuleHandleW("RjSlide".wideString) {  // For RjSlide project
-            var buf = [CWideChar](repeating: 0, count: Int(MAX_PATH))
-            let bufSize = GetModuleFileNameW(module, &buf, UInt32(buf.count))
-            if bufSize > 0 {
-                let rjSlideUrl = URL(
-                    filePath: String(decoding: Array(buf[..<Int(bufSize)]), as: UTF16.self))
-                if let folder = rjSlideUrl.reachableSibling(named: "\(folder)/"),
-                    let url = folder.reachableChild(named: "\(name).dll")
-                {
-                    path = url.filePath
-                }
-            }
+        if let root = SystemProcess.moduleDirectory {
+            path =
+                root.reachableChild(named: "\(folder)/\(name).dll")?.filePath
+                ?? root.reachableChild(
+                    named: "Ruslan_Ruslan.bundle/CloudExec/lib/\(folder)/\(name).dll")?.filePath
+                ?? path
         }
 
         path = path.replacingOccurrences(of: "/", with: "\\")  // LoadLibraryEx requires backslash, LoadLibrary does not.
