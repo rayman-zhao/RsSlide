@@ -8,7 +8,7 @@
     import RsSlide
     import WinSDK
 
-    /// Byte size of the fixed header that opens the `RsSlideSlideInfo`
+    /// Byte size of the fixed header that opens the `RsSlideInfo`
     /// buffer; mirrored with offsetof static_asserts in SlideShim.h.
     private let infoHeaderBytes = 64
 
@@ -23,8 +23,8 @@
     /// is not reliably true, so no keyword source is emitted; the field keeps
     /// the ABI slot for a real source (e.g. Aperio Stain lines) and the raw
     /// ImageDescription (patient data) must never leak in.
-    @_cdecl("RsSlideSlideInfo")
-    public func rsSlideSlideInfo(
+    @_cdecl("RsSlideInfo")
+    public func rsSlideInfo(
         path: UnsafePointer<CWideChar>?,
         outInfo: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?
     ) -> HRESULT {
