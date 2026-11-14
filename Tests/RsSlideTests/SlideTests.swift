@@ -83,7 +83,7 @@ struct SlideTests {
                 "MDSX", false, true, true, false
             ),
             (
-                "MDSX/slide.mdsx", "81be8ba7-b0be-4f96-81be-014ece99e581",
+                "MDSX/slide.mdsx", "5F37FAC7-1437-5CAC-A215-3E1C24C21E4F",
                 "slide",
                 "MDSX", true, true, true, false
             ),
@@ -146,6 +146,11 @@ struct SlideTests {
                 "奥林巴斯/图像_王磊-PD-L1.vsi", "3BB99B98-572A-5805-A359-5C3DEA00DAD3",
                 "图像_王磊-PD-L1",
                 "VSI", true, true, false, false
+            ),
+            (
+                "SVS/JP2K-33003-1.svs", "D8255F7C-1241-52F4-8C94-7878D03A2E08",
+                "JP2K-33003-1",
+                "SVS", true, true, false, false
             ),
         ])
     func slideValid(

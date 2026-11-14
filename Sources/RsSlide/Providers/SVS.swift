@@ -303,6 +303,15 @@ final class SVS: InternalSlide {
         if let w: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH),
             let h: UInt32 = TIFFGetField(tiff, TIFFTAG_IMAGELENGTH)
         {
+            if layerImageSize.count > 1,
+                let last = layerImageSize.last,
+                !(0..<layerZoom ~= last.w - Int(w) * layerZoom)
+                    || !(0..<layerZoom ~= last.h - Int(h) * layerZoom)
+            {
+                log.warning("SVS has more variant zoom, skip layer \(dir) \(w)x\(h)")
+                return
+            }
+
             layerDir.append(dir)
             layerImageSize.append((Int(w), Int(h)))
             layerTileSize.append(
