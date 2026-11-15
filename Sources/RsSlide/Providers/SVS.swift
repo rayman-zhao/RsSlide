@@ -1,5 +1,7 @@
 import Foundation
 import LibJPEGTurbo
+import LibOpenJPEG
+import LibPNG
 import LibTIFF
 import LittleCMS
 import RsFoundation
@@ -38,6 +40,7 @@ final class SVS: InternalSlide {
     private let tiff: OpaquePointer
     private var layerDir: [UInt32] = []
     private var tilePhotometric = 0
+    private var tileJP2KCompressed = false
     private var macroDir: UInt32 = 0
     private var labelDir: UInt32 = 0
     private var imageDesc = ""
@@ -119,16 +122,32 @@ final class SVS: InternalSlide {
         let tileX = UInt32(coord.col * tileTrait.size.w)
         let tileY = UInt32(coord.row * tileTrait.size.h)
 
+        if tileJP2KCompressed {
+            let tid = TIFFComputeTile(tiff, tileX, tileY, 0, 0)
+            let bufSize = tileTrait.maxBytes
+            var buf = [UInt8](repeating: 0, count: bufSize)
+            guard decodeJP2KTile(tid: tid, into: &buf) else { return nil }
+
+            if let cmsTransform {
+                var transformed = [UInt8](repeating: 0, count: bufSize)
+                cmsDoTransform(
+                    cmsTransform, buf, &transformed,
+                    cmsUInt32Number(bufSize / tileTrait.pixelBytes))
+                buf = transformed
+            }
+            return pngCompress2(buf, tileTrait.pngPF, tileTrait.size.w, tileTrait.size.h)
+        }
+
         if let cmsTransform {
             let bufSize = tileTrait.size.w * tileTrait.size.h
             var buf = [UInt32](repeating: 0, count: bufSize)
             guard TIFFReadRGBATile(tiff, tileX, tileY, &buf) > 0 else { return nil }
 
-            var buf2 = [UInt32](repeating: 0, count: bufSize)
-            cmsDoTransform(cmsTransform, buf, &buf2, cmsUInt32Number(bufSize))
+            var transformed = [UInt32](repeating: 0, count: bufSize)
+            cmsDoTransform(cmsTransform, buf, &transformed, cmsUInt32Number(bufSize))
 
             let jpg = tjCompress(
-                buf2, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
+                transformed, TJPF_RGBA, tileTrait.size.w, tileTrait.size.h, 0, quality, true)
             return jpg
         }
 
@@ -144,6 +163,32 @@ final class SVS: InternalSlide {
             guard tileSize > 0 else { return nil }
             return Array(buf[..<tileSize])
         }
+    }
+
+    /// Decodes one Aperio JP2000 tile — a raw J2K codestream libtiff has no
+    /// codec for — into `buf` as interleaved RGB.
+    private func decodeJP2KTile(tid: UInt32, into buf: inout [UInt8]) -> Bool {
+        let rawSize = Int(TIFFReadRawTile(tiff, tid, &buf, tmsize_t(buf.count)))
+        guard rawSize > 0 else { return false }
+        guard let img = opjDecompress(Array(buf[..<rawSize])),
+            img.width == tileTrait.size.w, img.height == tileTrait.size.h,
+            img.components == tileTrait.pixelFormat.rawValue
+        else { return false }
+        buf = img.pixels
+
+        // 33003 codestreams carry YCbCr (COD MCT=0, chroma XRsiz=2) even though
+        // the TIFF photometric claims RGB; full-range BT.601 like baseline JPEG.
+        if tilePhotometric == PHOTOMETRIC_YCBCR {
+            for i in stride(from: 0, to: img.width * img.height * 3, by: 3) {
+                let y = Int(buf[i])
+                let cb = Int(buf[i + 1]) - 128
+                let cr = Int(buf[i + 2]) - 128
+                buf[i] = UInt8(clamping: y + ((91881 * cr) >> 16))
+                buf[i + 1] = UInt8(clamping: y - ((22554 * cb + 46802 * cr) >> 16))
+                buf[i + 2] = UInt8(clamping: y + ((116130 * cb) >> 16))
+            }
+        }
+        return true
     }
 
     private func importDirectories() {
@@ -204,13 +249,22 @@ final class SVS: InternalSlide {
     }
 
     private func importMetadata(from dir: UInt32) {
+        if let photometric: UInt16 = TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC) {
+            tilePhotometric = Int(photometric)
+        }
+        if let compression: UInt16 = TIFFGetField(tiff, TIFFTAG_COMPRESSION) {
+            // Aperio 私有 JP2000 码(33003 YCbCr / 33005 RGB,OpenSlide 亦只注册这两码),
+            // libtiff 无对应编解码器,瓦片是裸 J2K 码流,须由 OpenJPEG 解码后无损输出 PNG。
+            tileJP2KCompressed = compression == 33003 || compression == 33005
+            if tileJP2KCompressed {  // 33003 should be YCbCr, not RGB from TIFFTAG_PHOTOMETRIC
+                tilePhotometric = Int(compression == 33003 ? PHOTOMETRIC_YCBCR : PHOTOMETRIC_RGB)
+            }
+        }
         if let tw: UInt32 = TIFFGetField(tiff, TIFFTAG_TILEWIDTH),
             let th: UInt32 = TIFFGetField(tiff, TIFFTAG_TILELENGTH)
         {
-            tileTrait = TileTrait(width: Int(tw), height: Int(th))
-        }
-        if let photometric: UInt16 = TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC) {
-            tilePhotometric = Int(photometric)
+            tileTrait = TileTrait(
+                width: Int(tw), height: Int(th), compression: tileJP2KCompressed ? .png : .jpeg)
         }
 
         if let desc: UnsafeMutablePointer<CChar> = TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION) {  // libtiff keep this const char * memory
@@ -266,8 +320,11 @@ final class SVS: InternalSlide {
                 let sRGB = cmsCreate_sRGBProfile()!
                 defer { cmsCloseProfile(sRGB) }
 
+                // JP2K tiles feed the transform interleaved RGB straight from
+                // OpenJPEG; the TIFFReadRGBATile path needs RGBA words.
+                let fmt = tileJP2KCompressed ? CMS_TYPE_RGB_8 : CMS_TYPE_RGBA_8
                 cmsTransform = cmsCreateTransform(
-                    iccProfile, CMS_TYPE_RGBA_8, sRGB, CMS_TYPE_RGBA_8,
+                    iccProfile, fmt, sRGB, fmt,
                     cmsUInt32Number(INTENT_PERCEPTUAL), 0)
             } else {
                 log.warning("ICC profile color space is not RGB, ignored")
@@ -308,7 +365,7 @@ final class SVS: InternalSlide {
                 !(0..<layerZoom ~= last.w - Int(w) * layerZoom)
                     || !(0..<layerZoom ~= last.h - Int(h) * layerZoom)
             {
-                log.warning("SVS has more variant zoom, skip layer \(dir) \(w)x\(h)")
+                log.warning("SVS has more variant zoom 4 and 2, skip layer \(dir) \(w)x\(h)")
                 return
             }
 

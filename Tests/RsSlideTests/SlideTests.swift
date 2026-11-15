@@ -206,7 +206,8 @@ struct SlideTests {
             // "DCM/锦州582531-10/",
             // "奥林巴斯/图像.vsi",
             // "奥林巴斯/图像_王磊-PD-L1.vsi",
-            "260808-6.tif"
+            // "260808-6.tif",
+            "SVS/JP2K-33003-1.svs"
         ])
     func slideTileValid(_ fn: String) async throws {
         let trait = URL(filePath: fn, relativeTo: BASE).slideKind
